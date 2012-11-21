@@ -1,0 +1,628 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<package>
+<job id="main">
+<object id="NTW" progid="WScript.Network"/>
+<object id="WSH" progid="WScript.Shell"/>
+<object id="FSO" progid="Scripting.FileSystemObject"/>
+<resource id="Version">v1.2 (Sep 2004)</resource>
+<resource id="Author">http://winadmin.sourceforge.net</resource>
+<resource id="License">
++======================================================================+
+| (c) 2004 WinAdminUtils -  http://winadmin.sourceforge.net by pforret |
+| Open Software License  -  http://opensource.org/licenses/osl-1.1.txt |
+| The Original Work is provided under this License on an "AS IS" BASIS |
+| and WITHOUT WARRANTY,  either express or implied, including, without |
+| limitation,  the warranties of NON-INFRINGEMENT,  MERCHANTABILITY or |
+| FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY |
+| OF THE ORIGINAL WORK IS WITH YOU.                                    |
++======================================================================+
+</resource>
+<resource id="History">
+:: v1.2 - 2004-09-14 - added isize/osize options
+:: v1.1 - 2003-09-19 - Upgraded to waTemplate 1.2
+:: v1.0 - 2003-09-01 - First public release
+</resource>
+<resource id="Tests">
+waTimer PROGRESS 88 /total:150
+:: should give: 
+:: 58.67%
+
+waTimer PROGRESS 88 /total:150 /bar
+:: should give 
+:: [#############################_____________________] 58.67%
+
+waTimer START test
+waTimer WAIT 3
+waTimer STOP test /calc:20 /scale:hr /unit:tests/hour
+:: should give something like
+:: waTimer - test : 3.75 seconds elapsed
+:: waTimer - test : Throughput = 19,204 tests/hour
+
+:: _____ TYPICAL SEQUENCE _____
+waTimer START mytest
+:: ...
+waTimer PROGRESS 50 /total:150
+:: ...
+waTimer PROGRESS 100 /total:150
+:: ...
+waTimer PROGRESS 150 /total:150
+waTimer STOP  mytest /calc:150  /unit:copy/hr
+</resource>
+<runtime>
+<description>
+_____   waTimer.wsf v1.2 (Sep 2004) - http://winadmin.sourceforge.net   _____
+Script to time execution of programs/scripts and
+calculate throughput statistics afterwards.
+</description>
+
+<unnamed type="string" required="true"  name="cmd"      helpstring="command - WAIT/START/PROGRESS/STOP" />
+<unnamed type="string" required="true" 	name="par"      helpstring="parameter - (WAIT) # seconds to wait - (START/STOP) timer ID"/>
+
+<named   type="string" required="false" name="total" helpstring="(PROGRESS) show progress for X of TOTAL things that have been done (default: 100)" />
+<named   type="string" required="false" name="bar"   helpstring="(PROGRESS) show progress as bar instead of as numbers (always to STDOUT, not to file)" />
+
+<named   type="string" required="false" name="calc"  helpstring="(STOP) calculate # events/sec stats
+		/calculate:5120000 : divide 5120000 by the # of seconds elapsed to calculate e.g. bytes/sec" />
+<named   type="string" required="false" name="unit"  helpstring="(STOP) Unit to use for calculation display (default: #/sec)" />
+<named   type="string" required="false" name="scale" helpstring="(STOP) Scale for stat calculation (default: 1)
+		/scale:100 = divide calculate input by 100 (e.g. to get m instead of cm)
+		/scale:hr  = multiply to get per hour stats (also /scale:min for minutes)
+		/scale:K(k,M,m,G,g): divide to get Kilo,Mega,Giga (k uses 1000, K uses 1024)" />
+<named   type="string" required="false" name="isize"  helpstring="(STOP) Filename of input: size will be used to calculate stats" />
+<named   type="string" required="false" name="osize"  helpstring="(STOP) Filename of output: size will be used to calculate stats" />
+<named   type="simple" required="false" name="text"  helpstring="(STOP) only output pure numbers, no fancy text (easier for parsing)
+" />
+
+<named   name="ver"   
+	type="simple" required="false" helpstring="version - show version and license information
+	" />
+
+<named   name="v"   
+	type="simple" required="false" helpstring="verbose - show debug output during execution" />
+<named   name="q"   
+	type="simple" required="false" helpstring="quiet   - show no output during execution" />
+<named   name="log" 
+	type="string" required="false" helpstring="logfile - log output in file
+	if filename='D' use [script name].YYYYMMDD.log as log file
+	if filename='M' use [script name].YYYYMM.log as log file
+	if no filename given use [script name].log as log file" />
+
+<example>
+Examples:
+
+waTimer PROGRESS 88 /total:150
+:: should give: 
+:: 58.67%
+
+waTimer PROGRESS 88 /total:150 /bar
+:: should give 
+:: [#############################_____________________] 58.67%
+
+waTimer START test
+waTimer WAIT 3
+waTimer STOP test /calc:20 /scale:hr /unit:tests/hour
+:: should give something like
+:: waTimer - test : 3.75 seconds elapsed
+:: waTimer - test : Throughput = 19,204 tests/hour
+
+:: _____ TYPICAL SEQUENCE _____
+waTimer START mytest
+:: ...
+waTimer PROGRESS 50 /total:150
+:: ...
+waTimer PROGRESS 100 /total:150
+:: ...
+waTimer PROGRESS 150 /total:150
+waTimer STOP  mytest /calc:150  /unit:copy/hr
+</example>
+</runtime>
+<script language="VBScript">
+<![CDATA[
+    
+    ' --- initialize parameters ---
+	'todo: insert command PROGRESS that show a progress bar if you call "waTimer PROGRESS 15 /total:20"
+	Dim oLog
+	Dim ENV,sTimerID
+	Set oLog = New Logger
+
+	Prefix=":: waTimer - "
+
+	Set ArgsNamed=WScript.Arguments.Named
+	Set ArgsUnnamed=WScript.Arguments.Unnamed
+	ProgVersion="_____   " & Wscript.ScriptName & " " & getResource("Version") & " - " & getResource("Author") & "   _____"
+
+    ' --- check options ---
+	If  ArgsNamed.Exists("q")   Then oLog.SetVerbose(0) End If
+	If  ArgsNamed.Exists("v")   Then oLog.SetVerbose(2) End If
+	If  ArgsNamed.Exists("log") Then oLog.SetLogFile(ArgsNamed.Item("log")) End If
+
+
+	If  ArgsNamed.Exists("ver") Then
+		Wscript.echo ProgVersion
+		Wscript.echo "===== LICENSE =====" & getResource("License")
+		Wscript.echo "===== HISTORY =====" & getResource("History")
+        Wscript.Quit(0)
+    End If
+	If  ArgsNamed.Exists("example") Then
+		Wscript.echo ProgVersion
+		Wscript.echo getResource("Tests")
+        Wscript.Quit(0)
+    End If
+	If  ArgsUnnamed.Count < 2 Then
+		Wscript.echo ProgVersion
+		Wscript.Echo "Usage: " & Wscript.ScriptName & " START|STOP (name)"
+		Wscript.Echo "       " & Wscript.ScriptName & " WAIT (time)"
+		Wscript.Echo "       " & Wscript.ScriptName & " PROGRESS (percent)"
+		Wscript.echo "Type '" & Wscript.ScriptName & " /?'   for usage and examples"
+		Wscript.echo "Type '" & Wscript.ScriptName & " /ver' for version/license information"
+        Wscript.Quit(0)
+	End If
+
+	Dim bTextOnly, sUnit, sOper, sParam, iTotal, bDoBar, iBarLen, bDoCalc, iOperations, sScale, dEvents, sInFile, sOutFile,iFileSize
+
+	sOper = Ucase(ArgsUnnamed(0))
+	sParam = ArgsUnnamed(1)	
+
+	bTextOnly = GetNamedSimple("text") 
+	sUnit     = GetNamedString("unit","#/sec")
+	iTotal    = GetNamedInt("total",100)
+	bDoBar    = GetNamedSimple("bar") 
+	If bDoBar Then
+		iBarLen= GetNamedInt("bar",50)
+	Else
+		iBarLen= 50
+	End If
+	bDoCalc   = GetNamedSimple("calc")
+	If bDoCalc Then
+		iOperations=GetNamedInt("calc",1)
+	End If
+	sScale=GetNamedString("scale","")
+
+	sOutFile=GetNamedFile("osize","",True)
+	If Len(sOutFile) > 0 Then
+		iFileSize=FSO.GetFile(sOutFile).Size/1024
+		bDoCalc=True
+		If iOperations = 1 Or Len(iOperations) = 0 Then
+			iOperations=iFileSize
+			If sUnit = "#/sec" Then
+				sUnit="KB/sec"
+			End If
+			oLog.LogInfo "  output filesize was " & iOperations & " KB"
+		End If
+	Else
+		sInFile=GetNamedFile("isize","",True)
+		If Len(sInFile) > 0 Then
+			iFileSize=FSO.GetFile(sInFile).Size/1024
+			bDoCalc=True
+			If iOperations = 1 Or Len (iOperations) = 0 Then
+				iOperations=iFileSize
+				If sUnit = "#/sec" Then
+					sUnit="KB/sec"
+				End If
+			oLog.LogInfo "  input filesize was " & iOperations & " KB"
+			End If
+		End If
+	End If
+	If iOperations < 1 Then
+		iOperations=1
+	End If
+
+    ' ---run the script ---
+	oLog.LogInfo "[[ " & ProgVersion & " ]] started @ " & Now()
+	Dim oSaver
+
+	Select case sOper
+	Case "WAIT"
+		Dim iSecs
+		iSecs=cInt(sParam)
+		iSecs=LimitFork(iSecs,1,3600,"Wait time")
+		oLog.LogInfo "Waiting for " & iSecs & " seconds "
+		oLog.LogInfo "BEGIN @ " & Now()
+		WScript.Sleep iSecs * 1000
+		oLog.LogInfo "END   @ " & Now()
+
+	Case "START"
+		Set oSaver = New Saver
+		'oSaver.Save sParam,Now() 
+		oSaver.Save sParam,Timer() 
+		oLog.LogInfo "Saved start time as " & oSaver.Retrieve(sParam)
+
+	Case "PROGRESS"
+		iDone = cInt(sParam)
+		oLog.LogInfo "PROGRESS = " & iDone
+		If iDone > 0 And Instr(WScript.FullName,"wscript.exe") = 0  Then
+			iPercent=(iDone*100)/iTotal
+			iPercent=LimitFork(iPercent,0,100,"% done")
+			oLog.LogInfo "PROGRESS = " & iDone & "% done"
+			If  bDoBar Then
+				iBarLen=LimitFork(iBarLen,10,100,"progress bar length")
+				oLog.LogInfo "OUTPUT AS BAR OF " & iBarLen & " chars length"
+				WScript.StdOut.Write "[" & Left(String(iBarLen,"#"),(iPercent*iBarLen)/100)
+				WScript.StdOut.Write Left(String(iBarLen,"_"),iBarLen-(iPercent*iBarLen)/100) & "] "& NiceFormat(iPercent) & "%" 
+				WScript.StdOut.Write vbCR
+			Else
+				WScript.StdOut.Write NiceFormat(iPercent) & "%" & vbCR
+			End If
+			If iPercent = 100 Then
+				WScript.StdOut.Write vbCRLF
+			End If
+		End If
+	Case "STOP"
+		Set oSaver = New Saver
+		'tStop = Now()
+		tStop = Timer()
+		tStart=oSaver.Retrieve(sParam)
+		If Len(tStart) = 0 Then
+			oLog.LogError Prefix & sParam & " : no start time was found!!"
+		End If
+		'iElapsed = DateDiff("s", tStart, tStop)
+		iElapsed = (tStop - tStart)
+		oLog.LogInfo "START = " & tStart
+		oLog.LogInfo "STOP  = " & tStop
+		If bTextOnly Then
+			oLog.LogWarning NiceFormat(iElapsed) 
+		Else
+			oLog.LogWarning Prefix & sParam & " : " & NiceFormat(iElapsed) & " seconds elapsed"
+		End If
+		iElapsed=LimitFork(iElapsed,.5,3600*24,"Elapsed # seconds")
+		If  bDoCalc Then
+			dEvents = CDbl(iOperations)
+			If dEvents < 1 Then
+				oLog.LogInfo "Input for calculation [" & iOperations & "] should be number > 0"
+			Else
+				oLog.LogInfo "Calculation starts: " & dEvents & " in " & iElapsed & " seconds"
+				
+				dScale=CDbl(1)
+				Select Case sScale
+				Case ""
+					'do nothing
+				Case "min"
+					sUnit=Replace(sUnit,"/sec","/min")
+					sUnit=Replace(sUnit,"/s","/m")
+					dScale=CDbl(1/60)
+				Case "hr","h"
+					sUnit=Replace(sUnit,"/sec","/hr")
+					sUnit=Replace(sUnit,"/s","/h")
+					dScale=CDbl(1/3600)
+				Case "k"
+					sUnit="k" & sUnit
+					dScale=CDbl(1000)
+				Case "K"
+					sUnit="K" & sUnit
+					dScale=CDbl(1024)
+				Case "m"
+					sUnit="m" & sUnit
+					dScale=CDbl(1000 * 1000)
+				Case "M"
+					sUnit="M" & sUnit
+					dScale=CDbl(1024 * 1024)
+				Case "G"
+					sUnit="G" & sUnit
+					dScale=CDbl(1024 * 1024 * 1024)
+				Case "T"
+					sUnit="T" & sUnit
+					dScale=CDbl(1024 * 1024 * 1024 * 1024)
+				Case Else
+					If not IsNumeric(sScale) Then
+						oLog.LogError "Input scale is not numeric: [" & sScale & "]"
+					End If
+					dScale=CDbl(sScale)
+					If Not dScale > 0 Then
+						oLog.LogError "Unknown scale specification [" & sScale & "] - currently supports min/hr/k/K/m/M/G/T and integers"
+					End If
+				End Select
+				dEvents = dEvents / dScale
+				oLog.LogInfo "Events : " & dEvents*dScale & " / " & dScale & " = " & dEvents
+				dSpeed  = dEvents / CDbl(iElapsed)
+				oLog.LogInfo "Speed  : " & dEvents & " / " & iElapsed & " = " & dSpeed
+				If bTextOnly Then
+					oLog.LogWarning NiceFormat(dSpeed)
+				Else
+					oLog.LogWarning Prefix & sParam & " : Throughput = " & NiceFormat(dSpeed) & " " & sUnit
+				End If
+			End If
+		End If
+
+	case else
+		oLog.LogError "Unknown operation [" & sOper & "] - currently supported: START/WAIT/PROGRESS/STOP"
+	end select
+
+
+
+	oLog.LogInfo "[[ " & ProgVersion & " ]] ended   @ " & Now()
+
+'----------------------------------------------------------------------
+	Function LimitFork(iValue,iMin,iMax,iText)
+		LimitFork=iValue
+		If iValue < iMin Then
+			LimitFork=iMin
+			oLog.LogInfo iText & " - illegal value " & iValue & ", corrected to minimum " & iMin
+		End If
+		If iValue > iMax Then
+			LimitFork=iMax
+			oLog.LogInfo iText & " - illegal value " & iValue & ", corrected to maximum " & iMax
+		End If
+	End Function
+
+	Function NiceFormat(iFloat)
+		If Abs(iFloat) < 1 Then
+			NiceFormat=FormatNumber(iFloat,4) 
+		ElseIf Abs(iFloat) < 100 Then
+			NiceFormat=FormatNumber(iFloat,2) 
+		Else
+			NiceFormat=FormatNumber(iFloat,0) 
+		End If
+	End Function
+
+	Class Saver
+		Function Save(iName,iValue)
+			Dim sTimerID
+			Dim ENV
+
+			Set ENV = WSH.Environment("USER")
+			sTimerID="_timer_" & iName
+			ENV(sTimerID) = iValue
+		End Function
+
+		Function Retrieve(iName)
+			Dim sTimerID
+			Dim ENV
+
+			Set ENV = WSH.Environment("USER")
+			sTimerID="_timer_" & iName
+			Retrieve=ENV(sTimerID)
+		End Function
+	End Class
+'========================================================================================
+' TODO: insert your functions, subs, classes gere
+
+'========================================================================================
+' do not change code after this
+	Class Logger
+		Private HideWarning, HideInfo
+		Private Log2File, LogFilename
+		Private LogFSO, LogTXT
+		Private LogOpened
+
+		Private Sub Class_Initialize()
+			SetVerbose 1
+			Log2File = False
+			LogOpened = False
+		End Sub
+
+		Sub LogWarning(iText)
+			If Not HideWarning Then
+				OneLine iText
+			End If
+		End Sub
+
+		Function LogInfo(iText)
+			If Not HideInfo Then
+				OneLine iText 
+			End If
+		End Function
+
+		Function LogError(iText)
+			OneLine "***** ERROR ****" 
+			OneLine "*** " & iText 
+			Wscript.Quit(-1)
+		End Function
+
+		Function SetLogFile(iPath)
+			If iPath="" Or Lcase(iPath)="d" Or Lcase(iPath)="m" Then
+				'output should be logged, but no filename was given: generate a name!
+				sDate=Year(Now()) & Right("0" & Month(Now()),2) & Right("0" & Day(Now()),2)
+				TempName=WScript.ScriptName
+				If Right(TempName,4)=".wsf" Then
+					TempName=Left(TempName,Len(TempName)-4)
+				End If
+				If Right(TempName,4)=".vbs" Then
+					TempName=Left(TempName,Len(TempName)-4)
+				End If
+				If Lcase(iPath)="d" Then
+					TempName=TempName & "." & sDate
+				End If
+				If Lcase(iPath)="m" Then
+					TempName=TempName & "." & Left(sDate,6)
+				End If
+				iPath=TempName & ".log"
+			End If 
+			If Not LogOpened Then
+				LogFilename = iPath
+				SetLogFile=True
+				Log2File = True
+			Else
+				LogError "Cannot open second log file - ["& LogFilename &"] is already open"
+			End If
+		End Function
+
+		Function SetVerbose(iNum)
+			SafeNum=CInt(iNum)
+			If SafeNum<0 Then SafeNum = 0 End If
+			If SafeNum>20 Then SafeNum = 2 End If
+			If Instr(WScript.FullName,"wscript.exe") > 0 Or Not WScript.Interactive Then
+				' running with wscript or as batch => log output to file!
+				If Not Log2File Then
+					SetLogFile WScript.ScriptName & ".log"
+				End If
+			End If
+			Select case(CInt(iNum))
+			Case 0
+				HideWarning = True
+				HideInfo = True
+				WScript.Interactive=False
+			Case 1
+				HideWarning = False
+				HideInfo = True
+			Case 2
+				HideWarning = False
+				HideInfo = False
+			End Select
+		End Function
+
+		Private Sub OneLine (iText)
+			If Not Log2File Then
+				Wscript.StdOut.WriteLine iText
+			Else
+				If Not LogOpened Then
+					wscript.echo "Opening log file [" & LogFilename & "]"
+					set LogFSO = CreateObject("Scripting.FileSystemObject")
+					set LogTXT = LogFSO.OpenTextFile(LogFilename,8,True)
+					LogTXT.WriteLine "### START " & Wscript.Scriptname & " as " & NTW.UserName & "@" & NTW.UserDomain & " on " & NTW.ComputerName
+					LogOpened = True
+				End If
+				LogTXT.WriteLine iText
+			End If
+		End Sub
+
+	End Class
+
+		Function FormatUTCDate(dInput,iLength)
+		select case iLength
+		case 6
+			FormatUTCDate=Right("20" & Year(dInput),4) & Right("0" & Month(dInput),2)
+		case 8
+			FormatUTCDate=Right("20" & Year(dInput),4) & Right("0" & Month(dInput),2) & Right("0" & Day(dInput),2)
+		case else
+			FormatUTCDate=Right("20" & Year(dInput),4) & Right("0" & Month(dInput),2) & Right("0" & Day(dInput),2)
+		end select
+	End Function
+
+	Function Basename(sPath)
+		'delete everything before last "\"
+		If FSO.FileExists(sPath) Then
+			Basename=FSO.GetFile(sPath).Name
+		ElseIf InStrRev(sPath,"\") > 0 Then
+			Basename=Mid(sPath,InStrRev(sPath,"\")+1)
+		Else
+			Basename=sPath
+		End If
+	End Function
+
+	Function Foldername(sPath)
+		'delete everything after last "\"
+		If FSO.FileExists(sPath) Then
+			Foldername=FSO.GetFile(sPath).ParentFolder.Path
+		ElseIf InStrRev(sPath,"\") > 0 Then
+			Foldername=Left(sPath,InStrRev(sPath,"\")-1)
+		Else
+			Foldername=""
+		End If
+	End Function
+	'-----------------------------------------------------
+	' GET COMMANDLINE PARAMETERS
+	'-----------------------------------------------------
+
+	Function GetNamedString(sName,sDefault)
+		GetNamedString=sDefault
+		If  ArgsNamed.Exists(sName) Then
+			GetNamedString=ArgsNamed.Item(sName)
+		End If
+		oLog.LogInfo "  param ["&sName&"] = ["&GetNamedString&"] (string)"
+	End Function
+
+	Function GetNamedFile(sName,sDefault,bExists)
+		GetNamedFile=sDefault
+		If  ArgsNamed.Exists(sName) Then
+			GetNamedFile=ArgsNamed.Item(sName)
+		End If
+		If Len(GetNamedFile) > 0 And bExists Then
+			If Not FSO.FileExists(GetNamedFile) Then
+				oLog.LogError "Wrong parameter [" & sName & "]: file [" & GetNamedFile & "] does not exist."
+			End If
+		End If
+		oLog.LogInfo "  param ["&sName&"] = ["&GetNamedFile&"] (file)"
+	End Function
+
+	Function GetNamedInt(sName,iDefault)
+		If  ArgsNamed.Exists(sName) Then
+			If Len(ArgsNamed.Item(sName)) > 0 Then
+				GetNamedInt=CInt(ArgsNamed.Item(sName))
+			Else
+				GetNamedInt=CInt(iDefault)
+			End If
+		Else
+			GetNamedInt=CInt(iDefault)
+		End If
+		oLog.LogInfo "  param ["&sName&"] = ["&GetNamedInt&"] (integer)"
+	End Function
+	
+	Function GetNamedSize(sName,sDefault)
+		Dim sSize, dMultiplier
+
+		dMultiplier=1
+		sSize=Ucase(sDefault)
+		If  ArgsNamed.Exists(sName) Then
+			sSize=Ucase(ArgsNamed.Item(sName))
+		End If
+		If     Instr(sSize,"KB") > 0 Then
+			dMultiplier=1024
+			sSize=Replace(sSize,"KB","")
+		Elseif Instr(sSize,"K") > 0 Then
+			dMultiplier=1024
+			sSize=Replace(sSize,"K","")
+		Elseif Instr(sSize,"MB") > 0 Then
+			dMultiplier=1024*1024
+			sSize=Replace(sSize,"MB","")
+		Elseif Instr(sSize,"M") > 0 Then
+			dMultiplier=1024*1024
+			sSize=Replace(sSize,"M","")
+		Elseif Instr(sSize,"GB") > 0 Then
+			dMultiplier=1024*1024*1024
+			sSize=Replace(sSize,"GB","")
+		Elseif Instr(sSize,"G") > 0 Then
+			dMultiplier=1024*1024*1024
+			sSize=Replace(sSize,"G","")
+		End If
+		'TO DO: make this robust
+		GetNamedSize=CDbl(sSize)*dMultiplier
+		oLog.LogInfo "  param ["&sName&"] = ["&GetNamedSize&"] (bytes)"
+	End Function
+	
+	Function GetNamedDuration(sName,sDefault)
+		Dim sSize, dMultiplier
+
+		'always calculate back to hours!
+		dMultiplier=24
+		sSize=Ucase(sDefault)
+		If  ArgsNamed.Exists(sName) Then
+			sSize=Ucase(ArgsNamed.Item(sName))
+			If Len(sSize) = 0 Then
+				sSize=Ucase(sDefault)
+			End If
+		End If
+		If     Instr(sSize,"H") > 0 Then
+			dMultiplier=1
+			sSize=Replace(sSize,"H","")
+		Elseif Instr(sSize,"D") > 0 Then
+			dMultiplier=24
+			sSize=Replace(sSize,"D","")
+		Elseif Instr(sSize,"W") > 0 Then
+			dMultiplier=24*7
+			sSize=Replace(sSize,"W","")
+		Elseif Instr(sSize,"M") > 0 Then
+			dMultiplier=24*30
+			sSize=Replace(sSize,"M","")
+		Elseif Instr(sSize,"Y") > 0 Then
+			dMultiplier=24*365
+			sSize=Replace(sSize,"Y","")
+		End If
+		'TO DO: make this robust
+		On Error Resume Next
+		GetNamedDuration=CDbl(sSize)*dMultiplier
+		If Err.Number <> 0 Then 
+			OLog.LogError "Illegal duration parameter [/" & sName & "] : ["&sSize&"]"
+		End If
+		On Error Goto 0
+		'oLog.LogInfo "  param ["&sName&"] = ["&GetNamedSize&"] (bytes)"
+	End Function
+
+	Function GetNamedSimple(sName)
+		GetNamedSimple=ArgsNamed.Exists(sName)
+		oLog.LogInfo "  param ["&sName&"] = ["&GetNamedSimple&"] (boolean)"
+	End Function
+
+]]>
+</script>
+</job>
+</package>

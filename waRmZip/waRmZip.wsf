@@ -1,0 +1,1092 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<package>
+<job id="main" args="/?" prompt="no">
+<?job error="false" debug="false" ?>
+<object id="NTW" progid="WScript.Network"/>
+<object id="WSH" progid="WScript.Shell"/>
+<object id="FSO" progid="Scripting.FileSystemObject"/>
+<resource id="Version">v1.7 (Nov 2005)</resource>
+<resource id="Author">http://winadmin.sourceforge.net</resource>
+<resource id="License">
++======================================================================+
+| (c) 2004 WinAdminUtils -  http://winadmin.sourceforge.net by pforret |
+| Open Software License  -  http://opensource.org/licenses/osl-1.1.txt |
+| The Original Work is provided under this License on an "AS IS" BASIS |
+| and WITHOUT WARRANTY,  either express or implied, including, without |
+| limitation,  the warranties of NON-INFRINGEMENT,  MERCHANTABILITY or |
+| FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY |
+| OF THE ORIGINAL WORK IS WITH YOU.                                    |
++======================================================================+
+</resource>
+<resource id="History">
+:: v1.7 - 2005-11-21 - fix paths with spaces, add $WEEKDAY
+:: v1.6 - 2004-07-12 - fix move/copy bug for folder trees
+:: v1.5 - 2004-06-15 - fixed filter bug, better rotate feedback
+:: v1.4 - 2004-03-10 - adapted for waCron.cmd, added /nh, max age in h/d/w/m
+:: v1.3 - 2004-02-24 - worked on the /log functionality
+:: v1.2 - 2004-01-15 - added 'move' functionality
+:: v1.1b- 2003-11-18 - fixed /log:d bug - .zip.zip bug
+:: v1.1 - 2003-10-31 - added rotation/stats - fixed some bugs (e.g. /df)
+:: v1.0 - 2003-09-01 - First public release
+</resource>
+<runtime>
+<description>
+<![CDATA[
+_____   waRmZip.wsf v1.7 (Nov 2005) - http://winadmin.sourceforge.net   _____
+Utility to clean up/free up space in a folder (and its subfolders),
+* compressing files after a certain number of days (with external program)
+* rotating files after a certain number of days/above a certain size
+* deleting files and/or empty folders after a certain period of time
+* moving files to other folders/disks
+_____________________________________________________________________________
+]]>
+</description>
+<unnamed name="BASE" required="true" many="false" 
+	helpstring="base folder where cleanup starts
+"/>
+<named name="ca" required="false" type="string" 
+	helpstring="compress files after X days                     (default: no compress)"/>
+<named name="cp" required="false" type="string" 
+	helpstring="compress program - command line                 (default: wzzip.exe)"/>
+<named name="cpp" required="false" type="string" 
+	helpstring="compress program - command parameters           (default: folder\$out $folder\$in)"/>
+<named name="ce" required="false" type="string" 
+	helpstring="compressed file extension                       (default: .zip)
+"/>
+<named name="da" required="false" type="string" 
+	helpstring="delete files after X days                       (default: no delete)"/>
+<named name="dc" required="false" type="simple" 
+	helpstring="delete compressed files too after X days        (default: don't delete archives)"/>
+<named name="df" required="false" type="simple" 
+	helpstring="delete empty folders - only when /r is used     (default: don't delete folders)"/>
+<named name="dr" required="false" type="simple" 
+	helpstring="delete read-only files/folders                  (default: don't delete read-only)
+"/>
+<named name="ma" required="false" type="string" 
+	helpstring="move files after X days                         (default: no backup)"/>
+<named name="md" required="false" type="string" 
+	helpstring="move files to this folder (can be local or UNC) (default: /ma does not work without this parameter)
+	the following keywords are substituted: 
+	$YEAR: YYYY, $MONTH: YYYYMM, $DAY: YYYYMMDD, $HOUR: HH, $COMP: COMPUTERNAME, $WEEKDAY: 1-7
+	e.g: /md:F:\backup\$COMP\logfiles\$DAY"/>
+<named name="mb" required="false" type="simple" 
+	helpstring="backup mode - do not delete file after moving   (default: delete)
+"/>
+<named name="ra" required="false" type	="string" 
+	helpstring="rotate files after X days (creation date!)      (default: no rotate)"/>
+<named name="rn" required="false" type="string" 
+	helpstring="rotate &amp; create new empty file after rotation   (default: do not create)"/>
+<named name="rp" required="false" type="string" 
+	helpstring="rotation prefix - D:YYYYMMDD                    (default: D)
+"/>
+<named name="fo" required="false" type="string" 
+	helpstring="filter only - only process files with extension (default: process all files)"/>
+<named name="fn" required="false" type="string" 
+	helpstring="filter not  - don't process files with extension(default: process all files)"/>
+<named name="gt" required="false" type="string" 
+	helpstring="greater than- only process when larger than     (default: 0 KB)"/>
+<named name="lt" required="false" type="string" 
+	helpstring="lesser than - only process when smaller than    (default: 1 GB)"/>
+<named name="r"  required="false" type="simple" 
+	helpstring="recursive   - also process subfolders           (default: don't process subfolders)"/>
+<named name="nh"  required="false" type="simple" 
+	helpstring="no hidden   - do not process hidden files/folders(default: just process them)"/>
+<named name="t"  required="false" type="simple" 
+	helpstring="test mode   - don't actually process files - just show what would be done
+"/>
+<named name="v"  required="false" type="simple" 
+	helpstring="verbose     - show debug output during execution"/>
+<named name="q"  required="false" type="simple" 
+	helpstring="quiet       - no output during execution"/>
+<named name="log" required="false" type="string" 
+	helpstring="logfile     - write output to file
+	if filename='D' use [script name].YYYYMMDD.log as log file
+	if filename='M' use [script name].YYYYMM.log as log file
+	if no filename given use [script name].log as log file"/>
+<example>
+<![CDATA[
+Examples: 
+waRmZip.wsf /r  "C:\Inetpub\ftproot" /da:7 /df /dr /log:c:\Inetpub\ftp_cleanup.log
+:: clean up FTP folders - delete all files older than 7 days and empty folders, even if read-only
+
+waRmZip.wsf /r /f:.log "C:\WINNT\system32\Logfiles" /da:30 /dc /ca:14 /log:d
+:: compress all log files older than 14 days, delete all files older than 30 days
+
+waRmZip.wsf /r  "C:\Temp" /da:1 /df /q
+:: delete all files older than 1 day, don't show output
+
+waRmZip.wsf "d:\server\log" /ra:7 /fo:.txt /gt:1MB /log:d
+:: rotate all .txt files greater than 1MB created more than 7 days ago
+
+waRmZip.wsf /r /f:.log "C:\WINNT\system32\Logfiles" /ma:7 /md:f:\backup\$YEAR\$COMP\$DAY\IIS
+:: move all log files older than 7 days to folder F:\backup\2004\server1\20040101\IIS
+
+waRmZip.wsf /r /f:.log "C:\WINNT\system32\Logfiles" /ca:14 /cp:"c:\Program Files\7-Zip\7za.exe" /cpp:"a -tzip $out $in"
+:: compress all log files older than 14 days with 7-Zip
+]]>
+</example>
+</runtime>
+<script language="VBScript">
+<![CDATA[
+	Option Explicit
+	Const vbQuote = """"
+    
+    ' --- initialize parameters ---
+	Dim oLog
+	Set oLog = New Logger
+
+	Dim ArgsNamed, ArgsUnnamed, ProgVersion
+	Set ArgsNamed=WScript.Arguments.Named
+	Set ArgsUnnamed=WScript.Arguments.Unnamed
+
+	ProgVersion="_____   " & Wscript.ScriptName & " " & getResource("Version") & " - " & getResource("Author") & "   _____"
+
+    ' --- check options ---
+	oLog.CscriptOnly '-- comment line if command can run in wscript
+	If Instr(WScript.FullName,"wscript.exe") > 0  Then
+		wscript.echo ProgVersion & vbCRLF & _
+			"ERROR: this script does NOT run with wscript.exe!" & vbCRLF & _
+			"Use 'cscript "&Wscript.ScriptName &"' to invoke it." & vbCRLF & _
+			"Or better: run 'cscript //H:CScript' to change default script invoking to cscript."
+        Wscript.Quit(1)
+	End If
+
+	If  ArgsNamed.Exists("ver") Then
+		Wscript.echo ProgVersion
+		Wscript.echo "===== LICENSE =====" & getResource("License")
+		Wscript.echo "===== HISTORY =====" & getResource("History")
+        Wscript.Quit(0)
+    End If
+	If  ArgsUnnamed.Count < 1 Then
+		Wscript.echo ProgVersion
+        'WScript.Arguments.ShowUsage
+		Wscript.echo "Type '" & Wscript.ScriptName & " /?' for usage and examples"
+		Wscript.echo "Type '" & Wscript.ScriptName & " /ver' for version and license information"
+        Wscript.Quit(0)
+	End If
+
+
+    ' --- get and parse parameters ---
+	If  ArgsNamed.Exists("q") Then oLog.SetVerbose(0) End If
+	If  ArgsNamed.Exists("v") Then oLog.SetVerbose(2) End If
+	If  ArgsNamed.Exists("log") Then oLog.SetLogFile(ArgsNamed.Item("log")) End If
+
+	Dim bRecursive, bTestMode
+	Dim iCmpAfter, sCmpExtension, sCmpCommand, sCmpCommandParam
+	Dim iDelAfter, bDelArchives, bDelFolders, bDelReadOnly
+	Dim iMovAfter, sMovDestination, bMovBackup
+	Dim iRotAfter, iRotSize, bRotCreate, sRotPrefix
+	Dim sFilterOnly, sFilterNot, iFilterGT, iFilterLT, bNoHidden
+	Dim RootFolder
+	Dim sNL
+
+	sNL=" "
+	'=== GENERIC PARAMETERS
+	bRecursive=GetNamedSimple("r")
+	bTestMode=GetNamedSimple("t")
+
+	'=== COMPRESS PARAMETERS
+	iCmpAfter=GetNamedInt("c",-1) 'support /c for backward compatibility
+	iCmpAfter=GetNamedDuration("ca",iCmpAfter)
+	If iCmpAfter > 0 Then
+		sFilterNot=".zip" 'if compress necessary , exclude .zip in roder to avoid .zip.zip.zip files
+	End If
+	sCmpExtension=GetNamedString("ce",".zip")
+	If Not Left(sCmpExtension,1) = "." Then
+		sCmpExtension="." & sCmpExtension
+	End If
+	sCmpCommand=GetNamedString("cp","wzzip.exe")
+	sCmpCommandParam=GetNamedString("cpp","$folder\$out $folder\$in")
+
+	'=== DELETE PARAMETERS
+	'support /d for backward compatibility
+	iDelAfter=GetNamedInt("d",-1)
+	iDelAfter=GetNamedDuration("da",iDelAfter)
+	bDelArchives=GetNamedSimple("dc")
+	bDelFolders=GetNamedSimple("df")
+	bDelReadOnly=GetNamedSimple("dr")
+
+	'=== MOVE PARAMETERS
+	iMovAfter=GetNamedDuration("ma",-1)
+	bMovBackup=GetNamedSimple("mb")
+	sMovDestination=GetNamedString("md","")
+	If iMovAfter > 0 Then
+		If Len(sMovDestination)<1 Then
+			oLog.LogError "Need /md:[path] parameter in order to move"
+		End If
+		If Instr(sMovDestination,"$")>0 Then
+			Dim sYear, sMonth, sDay, sName, sResolved
+			sResolved=sMovDestination
+			sResolved=Replace(sResolved,"$YEAR", FormatUTCDate(Now(),4))
+			sResolved=Replace(sResolved,"$MONTH", FormatUTCDate(Now(),6))
+			sResolved=Replace(sResolved,"$DAY", FormatUTCDate(Now(),8))
+			sResolved=Replace(sResolved,"$WEEKDAY", WeekDay(Now()))
+			sResolved=Replace(sResolved,"$HOUR", Right("0" & Hour(Now()),2))
+			sResolved=Replace(sResolved,"$COMP", NTW.ComputerName)
+			If sResolved=sMovDestination Then
+				oLog.LogWarning "["&sResolved&"] ---  can not expand $KEYWORD"
+			Else
+				sMovDestination=sResolved
+			End If
+		End If
+	End If
+
+	'=== ROTATE PARAMETERS
+	iRotAfter=GetNamedDuration("ra",-1)
+	iRotSize=GetNamedInt("rs",0)
+	bRotCreate=GetNamedSimple("rn")
+	sRotPrefix=GetNamedString("rp","D")
+
+	'=== FILTER PARAMETERS
+	sFilterOnly=GetNamedString("f","")   'support /f for backward compatibility
+	sFilterOnly=GetNamedString("fo",sFilterOnly)
+	sFilterNot =GetNamedString("fn","")
+	iFilterGT=GetNamedSize("gt","0")
+	iFilterLT=GetNamedSize("lt","1GB")
+	bNoHidden=GetNamedSimple("nh")
+
+	RootFolder=ArgsUnnamed(0)
+
+    ' ---run the script ---
+	oLog.LogWarning "[[ " & Wscript.ScriptName & " - " & getResource("Version") & " ]] started @ " & Now()
+
+	If Not FSO.FolderExists(RootFolder) Then
+		oLog.LogError "["&RootFolder&"] base folder does not exist"
+	End If
+	oLog.LogWarning "["&RootFolder&"] ---  START PROCESSING"
+
+	If iFilterGT > 0 Then
+		oLog.LogInfo "  (only process files > " & FormatNumber(iFilterGT/1024,0,-1,0,0) & " KB)"
+	End If
+	If iFilterLT < 1000000 Then
+		oLog.LogInfo "  (only process files < " & FormatNumber(iFilterLT/1024,0,-1,0,0) & " KB)"
+	End If
+	Dim oWalk
+
+	'=== START COMPRESS
+	If iCmpAfter >= 0 Then
+		Set oWalk = New cFolderWalker
+		oWalk.Action       = "compress"
+		oWalk.bDelReadOnly = bDelReadOnly
+		oWalk.bRecursive   = bRecursive
+		oWalk.bTestMode    = bTestMode
+		oWalk.iFilterGT    = iFilterGT
+		oWalk.iFilterLT    = iFilterLT
+		oWalk.iMaxHours    = iCmpAfter
+		oWalk.OutputSuffix = sCmpExtension
+		oWalk.sFilterNot   = sFilterNot
+		oWalk.sFilterOnly  = sFilterOnly
+		oWalk.sRootFolder  = RootFolder
+		oWalk.bNoHidden    = bNoHidden
+		oWalk.Run
+		Set oWalk = Nothing
+	End If
+
+	'=== START ROTATE
+	If iRotAfter >= 0 Then
+		Set oWalk = New cFolderWalker
+		oWalk.Action       = "rotate"
+		oWalk.bDelReadOnly = bDelReadOnly
+		oWalk.bRecursive   = bRecursive
+		oWalk.bTestMode    = bTestMode
+		oWalk.iFilterGT    = iFilterGT
+		oWalk.iFilterLT    = iFilterLT
+		oWalk.iMaxHours     = iRotAfter
+		oWalk.sFilterNot   = sFilterNot
+		oWalk.sFilterOnly  = sFilterOnly
+		oWalk.sRootFolder  = RootFolder
+		oWalk.bNoHidden    = bNoHidden
+		oWalk.Run
+		Set oWalk = Nothing
+	End If
+
+	'=== START MOVE
+	If iMovAfter >= 0 Then
+		Set oWalk = New cFolderWalker
+		If Not bTestMode  And Not FSO.FolderExists(sMovDestination) Then
+			Dim aResult
+			aResult=oWalk.RunCommand("mkdir """ & sMovDestination & """","")
+			If not FSO.FolderExists(sMovDestination) Then
+				oLog.LogError "["&sMovDestination&"] ---  could not create destination folder"
+			End If
+		End If
+		oLog.LogWarning "["&sMovDestination&"] ---  move/copy destination folder"
+		oWalk.Action       = "move"
+		oWalk.bDelEmptyFolders= bDelFolders
+		oWalk.bDelReadOnly = bDelReadOnly
+		oWalk.bMovNoDelete = bMovBackup
+		oWalk.bRecursive   = bRecursive
+		oWalk.bTestMode    = bTestMode
+		oWalk.iFilterGT    = iFilterGT
+		oWalk.iFilterLT    = iFilterLT
+		oWalk.iMaxHours     = iMovAfter
+		oWalk.sFilterNot   = sFilterNot
+		oWalk.sFilterOnly  = sFilterOnly
+		oWalk.sMovDestin   = sMovDestination
+		oWalk.sRootFolder  = RootFolder
+		oWalk.bNoHidden    = bNoHidden
+		oWalk.Run
+		Set oWalk = Nothing
+	End If
+
+	'=== START DELETE
+	If iDelAfter >= 0 Then
+		Set oWalk = New cFolderWalker
+		oWalk.Action       = "delete"
+		oWalk.bDelReadOnly = bDelReadOnly
+		oWalk.bRecursive   = bRecursive
+		oWalk.bTestMode    = bTestMode
+		oWalk.iFilterGT    = iFilterGT
+		oWalk.iFilterLT    = iFilterLT
+		oWalk.iMaxHours     = iDelAfter
+		oWalk.sFilterOnly  = sFilterOnly
+		oWalk.sRootFolder  = RootFolder
+		If not bDelArchives Then
+			oWalk.sFilterNot=sCmpExtension
+		End If
+		If Len(sFilterNot) > 0 Then
+			oWalk.sFilterNot  = sFilterNot
+		End If
+		oWalk.bDelEmptyFolders = bDelFolders
+		oWalk.bNoHidden    = bNoHidden
+		oWalk.Run
+		Set oWalk = Nothing
+	End If
+	oLog.LogInfo "[[ " & Wscript.ScriptName & " ]] ended   @ " & Now()
+
+'----------------------------------------------------------------------
+
+Class cFolderWalker
+	Dim Action
+	Dim bDelAfterVerify
+	Dim bDelEmptyFolders
+	Dim bDelReadOnly
+	Dim bRecursive
+	Dim bTestMode
+	Dim ExtCommand
+	Dim iFilterGT
+	Dim iFilterLT
+	Dim sFilterNot
+	Dim sFilterOnly
+	Dim iBytesSaved
+	Dim iFilesDeleted
+	Dim iFilesProcessed
+	Dim iFoldersDeleted
+	Dim iMaxHours
+	Dim iMaxSize
+	Dim iProgressCounter
+	Dim OutputPrefix ' typically used for rotated files
+	Dim OutputSuffix ' typically used for compressed files
+	Dim sMovDestin
+	Dim sRootFolder
+	Dim bMovNoDelete
+	Dim bNoHidden
+
+	Private Sub Class_Initialize()
+		Action="compress"
+		bDelAfterVerify=True
+		bDelEmptyFolders=False
+		bDelReadOnly=False
+		bMovNoDelete=False
+		bRecursive=False
+		bTestMode=False
+		ExtCommand=""
+		sFilterNot=""
+		sFilterOnly=""
+		iBytesSaved=0
+		iFilesDeleted=0
+		iFilesProcessed=0
+		iFoldersDeleted=0
+		iMaxHours=10000
+		iMaxSize=0
+		iProgressCounter=0
+		OutputPrefix=""
+		OutputSuffix=""
+		sMovDestin=""
+		sRootFolder=""
+		bNoHidden=False
+	End Sub
+
+	Function Run
+		Dim tStart, tFinish, dElapsed
+		If iMaxHours < 0 Then
+			oLog.LogInfo " [" & sRootFolder & "] - max file age < 0 - skip " & Action
+			Exit Function
+		End If
+		oLog.LogWarning ">>> start |" & Ucase(Action) & "| phase - file age > " & FormatAge(iMaxHours)
+		tStart=Timer()
+		Call Walk(sRootFolder)
+		tFinish=Timer()
+		dElapsed=tFinish-tStart
+		If dElapsed > 0 Then
+			oLog.LogWarning "  * Processed " & iFilesProcessed & " files in " & FormatNumber(dElapsed,3,-1,0,0) & " sec (" & FormatNumber(iFilesProcessed/dElapsed,1,-1,0,0) & " files/sec)"
+		Else
+			oLog.LogWarning "  * Processed " & iFilesProcessed & " files in 0 sec"
+		End If
+		If iFilesDeleted > 0 Then
+			If bTestMode Then
+				oLog.LogWarning "  * " & Ucase(Action) & " " & iFilesDeleted & " objects => " & FormatNumber(iBytesSaved/1024,0,-1,0,0)  & " KB would be saved (estimate)"
+			Else
+				oLog.LogWarning "  * " & Ucase(Action) & " " & iFilesDeleted & " objects => " & FormatNumber(iBytesSaved/1024,0,-1,0,0)  & " KB was saved"
+			End If
+		Else
+			oLog.LogWarning "  * " & Ucase(Action) & " no objects => no space saved "
+		End If
+	End Function
+
+	Function Walk(sFolder)
+		Dim oFolder, oSubfolder, cFiles, oFile, InputFile, iHoursOld
+
+		Set oFolder=FSO.GetFolder(sFolder)
+		If bRecursive And oFolder.Subfolders.Count > 0 Then
+			oLog.LogInfo " [" & oFolder.Path & "] - first processing " & oFolder.Subfolders.Count & " subfolder(s) (recursive)"
+			For Each oSubfolder in oFolder.Subfolders
+				If bNoHidden And (( oSubFolder.Attributes And 2 ) <> 0) Then
+					'skip hidden folder
+				oLog.LogInfo " [" & oFolder.Path & "] - skipping hidden folder"
+				Else
+					Call Walk(oSubfolder.Path)
+				End If
+			Next
+		End If
+		Set cFiles =oFolder.Files
+		If cFiles.Count = 0 Then
+			SafeRmDir sFolder 
+			Exit Function
+		End If
+		'folder has files to process
+		iFilesProcessed = iFilesProcessed + cFiles.Count 
+		oLog.LogInfo " [" & oFolder.Path & "] - processing " & cFiles.Count & " files (total: " & iFilesProcessed & ")"
+		For Each oFile in cFiles
+			If Not MatchFilter(oFile.Name,sFilterOnly,sFilterNot) Then
+				'file does not match filter - skip it
+			Else
+				If bNoHidden And ((oFile.Attributes And 2) <> 0) Then
+					oLog.LogInfo " [" & oFile.Path & "] - skipping hidden file"
+				Else
+					If Action = "rotate" Then
+						iHoursOld=DateDiff("h",oFile.DateCreated,Now())
+					Else
+						iHoursOld=DateDiff("h",oFile.DateLastModified,Now())
+					End If
+					If iHoursOld >= iMaxHours And oFile.Size >= iFilterGT And oFile.Size <= iFilterLT Then
+						Call ProcessFile(Action,oFile.Path,iHoursOld)
+					End If
+				End If
+			End If
+		Next
+		SafeRmDir sFolder
+	End Function
+
+	Private Function ProcessFile(sAction,sFile,iDays)
+		Dim oFile, InputFile, OutputFile, iInputSize, iOutputSize, iResult
+
+		ProcessFile=0
+		If Not FSO.FileExists(sFile) Then
+			ShowWarning oFile.Name,"file could not be found!"
+		End If
+		Set oFile=FSO.GetFile(sFile)
+		iInputSize=oFile.Size
+
+		Select Case Lcase(sAction)
+		'------------------------------------
+		Case "compress"
+		' XYZ.log -> XYZ.log.zip
+			InputFile=sFile
+			OutputFile=sFile & sCmpExtension
+
+			If Lcase(Right(sFile,Len(sCmpExtension))) = Lcase(sCmpExtension) Then
+				'this file is an archive, don't double-compress it
+
+			ElseIf Not bTestMode Then
+				ShowProgress oFile.Name,iDays,"compressing (" & FormatNumber(iInputSize/1024,0,-1,0,0) & " KB)" 
+				iResult=SubstExec(sCmpCommand,sCmpCommandParam,InputFile,OutputFile,"compress",bDelAfterVerify)
+				iFilesDeleted=iFilesDeleted+VerifyDelete(InputFile,OutputFile,bDelAfterVerify)
+			Else
+				ShowProgress oFile.Name,iDays,"compressing (" & FormatNumber(iInputSize/1024,0,-1,0,0) & " KB)" 
+				iFilesDeleted=iFilesDeleted+1
+				Select case Lcase(Right(sFile,4))
+				Case ".mp3", ".mpg", ".jpg", ".gif", ".wma", ".wmv", ".zip", ".rar", ".ram"
+					'already compressed - bad compression rate
+					iBytesSaved=iBytesSaved+(iInputSize*.03)
+				Case ".txt",".log", ".reg"
+					'text-based, compresses very good
+					iBytesSaved=iBytesSaved+(iInputSize*.75)
+				Case Else
+					iBytesSaved=iBytesSaved+(iInputSize*.50)
+				End Select
+			End If
+			Set oFile = Nothing
+
+		'------------------------------------
+		Case "delete"
+		' XYZ.log -> delete it
+			ShowProgress oFile.Name,iDays,"deleting (" & FormatNumber(iInputSize/1024,0,-1,0,0) & " KB)" 
+			ProcessFile=1
+			If bTestMode Then
+				iFilesDeleted=iFilesDeleted+1
+				iBytesSaved=iBytesSaved+iInputSize
+			Else
+				iFilesDeleted=iFilesDeleted+VerifyDelete(sFile,"",False)
+			End If
+			Set oFile = Nothing
+		'------------------------------------
+		Case "rotate"
+		' XYZ.log -> renamed to YYYYMMDD.XYZ.log
+			Dim bIsRotated
+
+			'next hack is shabby, but should work +-, I'll use a RegExp later!
+			bIsRotated=Len(oFile.Name) > 10 And Left(oFile.name,2)="20" And Mid(oFile.name,9,1) = "."
+
+			If Not bIsRotated Then
+				ShowProgress oFile.Name,iDays,"rotating (" & FormatNumber(iInputSize/1024,0,-1,0,0) & " KB)"
+				If Not bTestMode Then
+					'file is not already a rotated file
+					Dim NewName
+
+					NewName= FormatUTCDate(Now(),8) & "." & oFile.name
+					If Not FSO.FileExists(NewName) Then
+						oFile.Name=NewName
+						ProcessFile=1
+						iFilesDeleted=iFilesDeleted+1
+					Else
+						ShowWarning oFile.Name,"could not rotate - file " & NewName & " exists!"
+					End If
+				Else
+					iFilesDeleted=iFilesDeleted+1
+				End If
+			End If
+			Set oFile = Nothing
+		'------------------------------------
+		Case "move"
+		' XYZ.log -> copy to [backup folder]\[tree structure]\XYZ.log
+			Dim sMovePath
+			Dim sMoveFile
+
+			ProcessFile=1
+			If bMovNoDelete Then
+				ShowProgress oFile.Name,iDays,"copying (" & FormatNumber(iInputSize/1024,0,-1,0,0) & " KB)" 
+				If Not bTestMode Then
+					sMovePath=Lcase(oFile.ParentFolder.Path)
+					sMovePath=Replace(sMovePath,Lcase(sRootFolder),sMovDestin) 
+					sMoveFile=sMovePath & "\" & oFile.Name
+					'first create folder!!!
+					If Not FSO.FolderExists(sMovePath) Then
+						RunCommand "mkdir " & vbQuote & sMovePath & vbQuote,oFile.ParentFolder.Path 
+					End If
+					oFile.Copy sMoveFile,True  'Overwrite if necessary
+					'iFilesDeleted=iFilesDeleted+VerifyDelete(sFile,sMovePath,True)
+				End If
+			Else
+				ShowProgress oFile.Name,iDays,"moving (" & FormatNumber(iInputSize/1024,0,-1,0,0) & " KB)" 
+				If bTestMode Then
+					iFilesDeleted=iFilesDeleted+1
+					iBytesSaved=iBytesSaved+iInputSize
+				Else
+					sMovePath=Lcase(oFile.ParentFolder.Path)
+					sMovePath=Replace(sMovePath,Lcase(sRootFolder),sMovDestin) 
+					sMoveFile=sMovePath & "\" & oFile.Name
+					'first create folder!!!
+					If Not FSO.FolderExists(sMovePath) Then
+						'use MKDIR because it does recursive folder creation
+						oLog.LogInfo " [" & sMovePath & "] - creating new destination folder"
+						RunCommand "mkdir " & vbQuote  & sMovePath & vbQuote ,oFile.ParentFolder.Path
+					End If
+					oFile.Copy sMoveFile,True  'Overwrite if necessary
+					iBytesSaved=iBytesSaved+iInputSize
+					iFilesDeleted=iFilesDeleted+VerifyDelete(sFile,sMoveFile,True)
+				End If
+			End If
+			Set oFile = Nothing
+		Case Else
+			oLog.LogError " [" & sFile & "] - invalid action ["&sAction&"]"
+			
+		End Select
+	End Function
+
+	Function ShowProgress(sFile,iAge,sRemark)
+		Dim sAge
+
+		sAge = FormatAge(iAge)
+		iProgressCounter = iProgressCounter + 1
+		If Len(sFile) > 50 Then
+			sFile=Left(sFile,30) & "..." & Right(sFile,17)
+		End If
+		'can't seem to get Modulus to work - so use hack
+		If Right("00" & (iProgressCounter*4),3) = "000" Then
+			oLog.LogWarning "  " & iProgressCounter & " files processed: " & sFile & " - (" & sAge & " old) => " & sRemark
+		End If
+		If Len(sFile) < 30 Then
+			sFile=Left(sFile & " .............................",30)
+		End If
+		oLog.LogInfo "   \" & sFile & " (" & sAge & " old) => " & sRemark
+	End Function
+
+	Function ShowWarning(sFile,sRemark)
+		If Len(sFile) < 30 Then
+			sFile=Left(sFile & "                    ",30)
+		End If
+		oLog.LogWarning "!! " & sFile & " - " & sRemark
+	End Function
+
+
+	Private Function SubstExec(sCMD,sPARAM,sInput,sOutput,sTXT,bVerify)
+		Dim Command, aResult, sFolder
+
+		SubstExec=0
+		Command="""" & sCMD & """" & sNL & sPARAM
+		oLog.LogInfo "SUBST: " & Command
+		sFolder=Foldername(sInput)
+		Command=DoReplace(Command,"$folder" ,"""" & sFolder  & """",False)
+		Command=DoReplace(Command,"$in" ,"""" & Basename(sInput)  & """",True)
+		Command=DoReplace(Command,"$out","""" & Basename(sOutput) & """",True)
+		If Not bTestMode Then
+			aResult=RunCommand(Command,sFolder)
+			SubstExec=aResult(3)
+			oLog.LogInfo "RETURN of [" & sCMD & "]: " & SubstExec & " (should be 0)"
+			If CInt(SubstExec) > 0 Then
+				oLog.LogError "STDERR:[" & Trim(aResult(2)) & "] "
+			End If
+		End If
+	End Function
+	
+	Private Function DoReplace(sCommand,sPattern,sValue,bRequired)
+		DoReplace=Replace(sCommand,sPattern,sValue)
+		If DoReplace = sCommand And bRequired Then
+			'nothing was replaced - replacing is required
+			oLog.LogError "Cannot substitute '" & sPattern & "' in command [" & sCommand & "]"
+		End If
+	End Function
+	
+'----------------------------------------------------------------------
+	Function FormatAge(iHours)
+		If iHours < 48 Then
+			FormatAge=FormatNumber(iHours,1) & " hours"
+		ElseIf iHours < 24 * 14 Then
+			FormatAge=FormatNumber(iHours/24,1) & " days"
+		ElseIf iHours < 24 * 60 Then
+			FormatAge=FormatNumber(iHours/(24*7),1) & " weeks"
+		Else
+			FormatAge=FormatNumber(iHours/(24*30),1) & " months"
+		End If
+	End Function
+
+	Function RunCommand(sCmd,sFolder)
+		Dim fCMD, oCMD, fErr, sData, fOut, ErrF, OutF, sOut, sErr, sRedir, iErr
+
+		sRedir=TempFilename()
+		'fCMD = RootFolder & "\" & Wscript.ScriptName & "_" & FSO.GetTempName &  ".cmd"
+		fCMD = sRedir & ".cmd"
+		fOut = sRedir & ".out.txt"
+		fErr = sRedir & ".err.txt"
+		'oLog.LogDebug "EXEC: create script [" & fCMD & "]"
+		set oCMD = FSO.CreateTextFile(fCMD,True)
+		oCMD.WriteLine "@echo off"
+		If Len(sFolder) > 0 Then
+			oCMD.WriteLine "pushd """ & sFolder & """"
+		End If
+		'oLog.LogInfo "EXEC: [" & sCmd & "]"
+		oCMD.WriteLine sCmd & sNL & " 2>""" & fErr & """" & sNL & " 1>""" & fOut & """"
+		oCMD.Close
+		If Not FSO.FileExists(fCMD) Then
+			'could probably not write the CMD
+			oLog.LogError "Could not find script file " & fCMD & " (self-generated)"
+		End If
+
+		iErr=WSH.Run(fCMD, 0, True)
+		If FSO.FileExists(fOut) Then
+			If FSO.GetFile(fOut).Size>0 Then
+				Set OutF = FSO.OpenTextFile(fOut)
+				sOut = OutF.Readall
+				OutF.Close
+			End If
+			FSO.DeleteFile(fOut)
+		End If
+		If FSO.FileExists(fErr) Then
+			If FSO.GetFile(fErr).Size>0 Then
+				Set ErrF = FSO.OpenTextFile(fErr)
+				sErr = ErrF.Readall
+				ErrF.Close
+			End If
+			FSO.DeleteFile(fErr)
+		End If
+		FSO.DeleteFile(fCMD)
+		'oLog.LogInfo "CMD FILE = " & fCMD
+		RunCommand = Array(sCmd, sOut, sErr, iErr)
+	End Function
+
+
+	Function TempFilename()
+		TempFilename=FSO.GetSpecialFolder(2) & "\" & Wscript.ScriptName & "_" & FSO.GetTempName
+	End Function
+
+	Private Function VerifyDelete(sInput,sOutput,bVerify)
+		Dim oInput, oOutput, iInputSize, iOutputSize
+		
+		VerifyDelete=0
+		If Len(sInput) = 0 Then
+			ShowWarning sInput,"cannot delete file because it does not exist"
+			Exit Function
+		End If
+		
+		If Not FSO.FileExists(sInput) Then
+			'nothing to do
+			ShowWarning sInput,"cannot delete file because it does not exist (anymore)"
+			Exit Function
+		End If
+		Set oInput = FSO.GetFile(sInput)
+		iInputSize=oInput.Size
+				
+		If Len(sOutput) > 0 Then
+			If Not FSO.FileExists(sOutput) Then
+				If bVerify Then
+					ShowWarning sOutput,"file does not exist so the original file will not be deleted"
+					Exit Function
+				End If
+			Else
+				Set oOutput=FSO.GetFile(sOutput)
+				If oOutput.Size = 0 Then
+					ShowWarning sOutput,"filesize = 0 so the original file will not be deleted"
+					Exit Function
+				End If
+				iOutputSize=oOutput.Size
+			End If
+		Else
+			iOutputSize=0
+		End If	
+		On Error Resume Next
+		oInput.Delete bDelReadOnly 
+		On Error Goto 0
+		If Err.Number <> 0 Then
+			Select Case Err.Number
+			Case 70
+				ShowWarning oFile.Name,"could not delete: not enough permissions!"
+				Err.Clear
+				Exit Function
+			Case Else
+				ShowWarning oFile.Name,"could not delete!"
+				oLog.LogError "ERROR: " & Err.Number & " : " & Err.Description & " (" & Err.Source & ")"
+			End Select
+		Else
+			iBytesSaved=iBytesSaved + iInputSize - iOutputSize
+		End If
+		Set oInput=Nothing
+		VerifyDelete=1
+	End Function
+
+	Private Function MatchFilter(iFilename,iMatch,iNotMatch)
+		'boolean, matches a filename with an optional 'AllowOnly' and an optional 'DoNotAllow' extension filter
+		If Len(iMatch)>0 Then
+			MatchFilter=Lcase(Right(iFilename,Len(iMatch))) = Lcase(iMatch)
+		Else
+			MatchFilter=True	
+		End If
+
+		If Len(iNotMatch)>0 Then
+			MatchFilter=MatchFilter AND NOT Lcase(Right(iFilename,Len(iNotMatch))) = Lcase(iNotMatch)
+		End If
+	End Function
+
+	Private Sub SafeRmDir(sFolder)
+		Dim oFolder
+
+		Set oFolder=FSO.GetFolder(sFolder)
+		If Not bDelEmptyFolders Then
+			Exit Sub
+		End If
+		If oFolder.Files.Count > 0 Then
+			'still files present - no need to delete
+			Exit Sub
+		End If
+		If oFolder.Subfolders.Count > 0 Then
+			'still subfolders present - no need to delete
+			Exit Sub
+		End If
+		If Lcase(sFolder) = Lcase(RootFolder) Then
+			'folder is the root folder - no need to delete
+			Exit Sub
+		End If
+		oLog.LogInfo " [" & oFolder.Path & "] - deleting empty folder"
+		If Not bTestMode Then
+			On Error Resume Next
+			oFolder.Delete bDelReadOnly
+			If Err Then
+				Select Case Err.Number
+				Case 70
+					ShowWarning oFolder.Name,"could not delete: not enough permissions!"
+				Case Else
+					ShowWarning oFolder.Name,"could not delete!"
+					oLog.LogError "ERROR: " & Err.Number & " : " & Err.Description & " (" & Err.Source & ")"
+				End Select
+			Else
+				iFoldersDeleted=iFoldersDeleted+1
+			End If
+			On Error Goto 0
+		End If
+	End Sub
+End Class
+'----------------------------------------------------------------------
+	Class Logger
+		Private HideWarning, HideInfo
+		Private Log2File, LogFilename
+		Private LogFSO, LogTXT
+		Private LogOpened
+
+		Private Sub Class_Initialize()
+			SetVerbose 1
+			Log2File = False
+			LogOpened = False
+		End Sub
+
+		Sub LogWarning(iText)
+			If Not HideWarning Then
+				OneLine iText
+			End If
+		End Sub
+
+		Function LogInfo(iText)
+			If Not HideInfo Then
+				OneLine iText 
+			End If
+		End Function
+
+		Function LogError(iText)
+			If Not Log2File Then
+				'changed this for 'Handle invalid error' reported by Ben
+				WScript.StdErr.WriteLine  "***** ERROR **** " & Wscript.ScriptName & " " & getResource("Version") 
+				WScript.StdErr.WriteLine  "*** " & iText 
+			Else
+				OneLine "***** ERROR **** " & Wscript.ScriptName & " " & getResource("Version") 
+				OneLine "*** " & iText 
+			End If
+			Wscript.Quit(-1)
+		End Function
+
+		Function SetLogFile(iPath)
+			Dim TempName
+
+			If Len(iPath) = 0 Then
+				iPath="d"
+			End If
+			If ( Lcase(iPath)="d" Or Lcase(iPath)="m" ) Then
+				'output should be logged, but no filename was given: invent a log file!
+				TempName=WScript.ScriptName
+				If Right(TempName,4)=".wsf" Then
+					TempName=Left(TempName,Len(TempName)-4)
+				End If
+				If Right(TempName,4)=".vbs" Then
+					TempName=Left(TempName,Len(TempName)-4)
+				End If
+				If Lcase(iPath)="d" Then
+					iPath=TempName & "." & FormatUTCDate(Now(),8)
+				End If
+				If Lcase(iPath)="m" Then
+					iPath=TempName & "." & FormatUTCDate(Now(),6)
+				End If
+				iPath=iPath & ".log"
+			End If 
+			If Not LogOpened Then
+				LogFilename = iPath
+				SetLogFile=True
+				Log2File = True
+			Else
+				LogError "Cannot open second log file - ["& LogFilename &"] is already open"
+			End If
+		End Function
+
+		Function SetVerbose(iNum)
+			Dim SafeNum
+
+			SafeNum=CInt(iNum)
+			If SafeNum<0 Then SafeNum = 0 End If
+			If SafeNum>2 Then SafeNum = 2 End If
+			If Instr(WScript.FullName,"wscript.exe") > 0 Or Not WScript.Interactive Then
+				' running with wscript or as batch => log output to file!
+				If Not Log2File Then
+					SetLogFile ""
+				End If
+			End If
+			Select case(CInt(iNum))
+			Case 0
+				HideWarning = True
+				HideInfo = True
+				WScript.Interactive=False
+			Case 1
+				HideWarning = False
+				HideInfo = True
+			Case 2
+				HideWarning = False
+				HideInfo = False
+			End Select
+		End Function
+
+		Private Sub OneLine (iText)
+			If Not Log2File Then
+				'changed this for 'Handle invalid error' reported by Ben
+				'Wscript.StdOut.WriteLine iText
+				Wscript.Echo iText
+			Else
+				If Not LogOpened Then
+					wscript.echo "Opening log file [" & LogFilename & "]"
+					set LogFSO = CreateObject("Scripting.FileSystemObject")
+					set LogTXT = LogFSO.OpenTextFile(LogFilename,8,True)
+					LogTXT.WriteLine "### START " & Wscript.ScriptName & " @ " & Now() & " -- " & NTW.UserName & "@" & NTW.UserDomain & " on " & NTW.ComputerName
+					LogOpened = True
+				End If
+				LogTXT.WriteLine iText
+			End If
+		End Sub
+
+		Function CscriptOnly
+			If Instr(WScript.FullName,"wscript.exe") > 0  Then
+				wscript.echo ProgVersion & vbCRLF & _
+					"ERROR: this script does NOT run with wscript.exe!" & vbCRLF & _
+					"Use 'cscript "&Wscript.ScriptName &"' to invoke it." & vbCRLF & _
+					"Or better: run 'cscript //H:CScript' to change default script invoking to cscript."
+				Wscript.Quit(1)
+			End If
+		End Function
+
+	End Class
+
+
+	Function FormatUTCDate(dInput,iLength)
+		select case iLength
+		case 4
+			FormatUTCDate=Right("20" & Year(dInput),4)
+		case 6
+			FormatUTCDate=Right("20" & Year(dInput),4) & Right("0" & Month(dInput),2)
+		case else
+			FormatUTCDate=Right("20" & Year(dInput),4) & Right("0" & Month(dInput),2) & Right("0" & Day(dInput),2)
+		end select
+	End Function
+
+	Function Basename(sPath)
+		'delete everything before last "\"
+		If FSO.FileExists(sPath) Then
+			Basename=FSO.GetFile(sPath).Name
+		ElseIf InStrRev(sPath,"\") > 0 Then
+			Basename=Mid(sPath,InStrRev(sPath,"\")+1)
+		Else
+			Basename=sPath
+		End If
+	End Function
+
+	Function Foldername(sPath)
+		'delete everything after last "\"
+		If FSO.FileExists(sPath) Then
+			Foldername=FSO.GetFile(sPath).ParentFolder.Path
+		ElseIf InStrRev(sPath,"\") > 0 Then
+			Foldername=Left(sPath,InStrRev(sPath,"\")-1)
+		Else
+			Foldername=""
+		End If
+	End Function
+	'-----------------------------------------------------
+	' GET COMMANDLINE PARAMETERS
+	'-----------------------------------------------------
+
+	Function GetNamedString(sName,sDefault)
+		GetNamedString=sDefault
+		If  ArgsNamed.Exists(sName) Then
+			GetNamedString=ArgsNamed.Item(sName)
+		End If
+		'oLog.LogInfo "  param ["&sName&"] = ["&GetNamedString&"] (string)"
+	End Function
+
+	Function GetNamedInt(sName,iDefault)
+		GetNamedInt=CInt(iDefault)
+		If  ArgsNamed.Exists(sName) Then
+			On Error Resume Next
+			GetNamedInt=CInt(ArgsNamed.Item(sName))
+			If Err.Number <> 0 Then 
+				OLog.LogError "Illegal parameter " & sName & ": ["&sSize&"]"
+			End If
+			On Error Goto 0
+		End If
+		'oLog.LogInfo "  param ["&sName&"] = ["&GetNamedInt&"] (integer)"
+	End Function
+	
+	Function GetNamedSize(sName,sDefault)
+		Dim sSize, dMultiplier
+
+		dMultiplier=1
+		sSize=Ucase(sDefault)
+		If  ArgsNamed.Exists(sName) Then
+			sSize=Ucase(ArgsNamed.Item(sName))
+		End If
+		If     Instr(sSize,"KB") > 0 Then
+			dMultiplier=1024
+			sSize=Replace(sSize,"KB","")
+		Elseif Instr(sSize,"K") > 0 Then
+			dMultiplier=1024
+			sSize=Replace(sSize,"K","")
+		Elseif Instr(sSize,"MB") > 0 Then
+			dMultiplier=1024*1024
+			sSize=Replace(sSize,"MB","")
+		Elseif Instr(sSize,"M") > 0 Then
+			dMultiplier=1024*1024
+			sSize=Replace(sSize,"M","")
+		Elseif Instr(sSize,"GB") > 0 Then
+			dMultiplier=1024*1024*1024
+			sSize=Replace(sSize,"GB","")
+		Elseif Instr(sSize,"G") > 0 Then
+			dMultiplier=1024*1024*1024
+			sSize=Replace(sSize,"G","")
+		End If
+		'TO DO: make this robust
+		On Error Resume Next
+		GetNamedSize=CDbl(sSize)*dMultiplier
+		If Err.Number <> 0 Then 
+			OLog.LogError "Illegal filesize parameter [/" & sName & "] : ["&sSize&"]"
+		End If
+		On Error Goto 0
+		'oLog.LogInfo "  param ["&sName&"] = ["&GetNamedSize&"] (bytes)"
+	End Function
+
+	Function GetNamedDuration(sName,sDefault)
+		Dim sSize, dMultiplier
+
+		'always calculate back to hours!
+		dMultiplier=24
+		sSize=Ucase(sDefault)
+		If  ArgsNamed.Exists(sName) Then
+			sSize=Ucase(ArgsNamed.Item(sName))
+			If Len(sSize) = 0 Then
+				sSize=Ucase(sDefault)
+			End If
+		End If
+		If     Instr(sSize,"H") > 0 Then
+			dMultiplier=1
+			sSize=Replace(sSize,"H","")
+		Elseif Instr(sSize,"D") > 0 Then
+			dMultiplier=24
+			sSize=Replace(sSize,"D","")
+		Elseif Instr(sSize,"W") > 0 Then
+			dMultiplier=24*7
+			sSize=Replace(sSize,"W","")
+		Elseif Instr(sSize,"M") > 0 Then
+			dMultiplier=24*30
+			sSize=Replace(sSize,"M","")
+		Elseif Instr(sSize,"Y") > 0 Then
+			dMultiplier=24*365
+			sSize=Replace(sSize,"Y","")
+		End If
+		'TO DO: make this robust
+		On Error Resume Next
+		GetNamedDuration=CDbl(sSize)*dMultiplier
+		If Err.Number <> 0 Then 
+			OLog.LogError "Illegal duration parameter [/" & sName & "] : ["&sSize&"]"
+		End If
+		On Error Goto 0
+		'oLog.LogInfo "  param ["&sName&"] = ["&GetNamedSize&"] (bytes)"
+	End Function
+	
+	Function GetNamedSimple(sName)
+		GetNamedSimple=ArgsNamed.Exists(sName)
+		'oLog.LogInfo "  param ["&sName&"] = ["&GetNamedSimple&"] (boolean)"
+	End Function
+]]>
+		</script>
+	</job>
+</package>

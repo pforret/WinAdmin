@@ -1,0 +1,12 @@
+_____  watimethis v1.0 - by pforret@users.sourceforge.net  _____
+
+Usage: watimethis [/ver] [/I] COMMAND [PARAM1] [PARAM2] ...
+
+Options :
+/ver    : version - show version and license info
+/I      : COMMAND is executed in popup CMD window (e.g. for programs with a lot of output)
+COMMAND : command that has to be timed
+PARAM1/2: parameters for this command
+
+Example: watimethis xcopy d:\folder1 d:\folder2
+         watimethis ping www.sun.com
