@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<package>
+<job id="main">
+<object id="NTW" progid="WScript.Network"/>
+<object id="WSH" progid="WScript.Shell"/>
+<object id="FSO" progid="Scripting.FileSystemObject"/>
+<resource id="Version">v1.0 - 2003-10-07</resource>
+<resource id="Author">http://winadmin.sourceforge.net</resource>
+<resource id="License">
++======================================================================+
+| (c) 2003 WinAdminUtils -  http://winadmin.sourceforge.net by pforret |
+| Open Software License  -  http://opensource.org/licenses/osl-1.1.txt |
+| The Original Work is provided under this License on an "AS IS" BASIS |
+| and WITHOUT WARRANTY,  either express or implied, including, without |
+| limitation,  the warranties of NON-INFRINGEMENT,  MERCHANTABILITY or |
+| FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY |
+| OF THE ORIGINAL WORK IS WITH YOU.                                    |
++======================================================================+
+</resource>
+<resource id="History">
+:: v1.0 - 2003-10-07 - First public release - single file FTP upload only
+</resource>
+<runtime>
+<description>
+Simple FTP script, uploads file to an FTP server
+</description>
+
+<unnamed name="command" 
+	type="string" required="true"  helpstring="command    - currently only 'UPLOAD' is supported" />
+<unnamed name="file" 
+	type="string" required="true"  helpstring="filename   - local file name" />
+<unnamed name="server" 
+	type="string" required="true"  helpstring="ftp server - ftp server name" />
+<unnamed name="path" 
+	type="string" required="true"  helpstring="ftp path   - path on ftp server" />
+
+<named   name="u"   
+	type="string" required="false" helpstring="username   - username to log in" />
+<named   name="p"   
+	type="string" required="false" helpstring="password   - password to log in" />
+
+<named   name="ver"   
+	type="simple" required="false" helpstring="version - show version and license information
+	" />
+
+<named   name="v"   
+	type="simple" required="false" helpstring="verbose - show debug output during execution" />
+<named   name="q"   
+	type="simple" required="false" helpstring="quiet   - show no output during execution" />
+<named   name="log" 
+	type="string" required="false" helpstring="logfile - log output in file
+	if filename='D' use [script name].YYYYMMDD.log as log file
+	if filename='M' use [script name].YYYYMM.log as log file
+	if no filename given use [script name].log as log file" />
+
+<example>
+Examples: 
+waFTP.wsf UPLOAD readme.txt ftp.myserver.com submissions /u:john /p:qpublic /log:D
+</example>
+
+</runtime>
+<script language="VBScript">
+<![CDATA[
+    
+    ' --- initialize parameters ---
+	Dim oLog
+	Set oLog = New Logger
+
+	Set ArgsNamed=WScript.Arguments.Named
+	Set ArgsUnnamed=WScript.Arguments.Unnamed
+	ProgVersion="::   " & Wscript.ScriptName & " " & getResource("Version") & " - " & getResource("Author") & "   ::"
+
+    ' --- check options ---
+	If  ArgsNamed.Exists("q") Then oLog.SetVerbose(0) End If
+	If  ArgsNamed.Exists("v") Then oLog.SetVerbose(2) End If
+	If  ArgsNamed.Exists("log") Then oLog.SetLogFile(ArgsNamed.Item("log")) End If
+
+	If  ArgsNamed.Exists("ver") Then
+		Wscript.echo ProgVersion
+		Wscript.echo "===== LICENSE =====" & getResource("License")
+		Wscript.echo "===== HISTORY =====" & getResource("History")
+        Wscript.Quit(0)
+    End If
+	If  ArgsUnnamed.Count < 4 Then
+		Wscript.echo ProgVersion
+		Wscript.echo "Type '" & Wscript.ScriptName & " /?'   for usage and examples"
+		Wscript.echo "Type '" & Wscript.ScriptName & " /ver' for version/license information"
+        Wscript.Quit(0)
+	End If
+
+	sCommand=ArgsUnnamed(0)
+	sLocal  =ArgsUnnamed(1)
+	sServer =ArgsUnnamed(2)
+	sRemote =ArgsUnnamed(3)
+
+	sUser=GetNamedStr("u","anonymous")
+	sPass=GetNamedStr("p",NTW.UserName & "@" & NTW.UserDomain)
+
+    ' ---run the script ---
+	oLog.LogInfo "  [[ " & ProgVersion & " ]] started @ " & Now()
+
+	'TODO: insert code here
+
+	sTempScript=TempFilename()
+
+	Select case uCase(sCommand)
+	case "UPLOAD"
+		If Not FSO.FileExists(sLocal) Then
+			oLog.LogError "["& sLocal &"] - local file does not exist!"
+		End If
+
+		oLog.LogWarning "Creating FTP UPLOAD script for " & sLocal
+		If Not MakeFTPScript(sTempScript,sUser,sPass,sLocal,sRemote) Then
+			oLog.LogError "["&sScript&"] - could not create script"
+		End If
+
+		oLog.LogWarning "Running  FTP UPLOAD script on  " & sServer
+		If Not RunFTPScript(sTempScript,sServer) Then
+			oLog.LogError "["&sScript&"] - could not run on server " & sServer
+		End If
+
+	case else
+		oLog.LogError "Invalid command ["&sCommand&"] - Currently only 'UPLOAD' is supported as FTP command"
+	End Select
+
+	oLog.LogInfo "  FTP communication was successful!"
+	oLog.LogInfo "  [[ " & ProgVersion & " ]] ended   @ " & Now()
+
+'========================================================================================
+' TODO: insert your functions, subs, classes gere
+
+Function MakeFTPScript(sScript,sUser,sPass,sLocal,sRemote)
+	MakeFTPScript=False
+	Set oScr = FSO.CreateTextFile(sScript,TRUE)
+	oLog.LogInfo  "  Creating the FTP script: [" & sScript & "]"
+
+	oScr.writeline("user " & sUser & " " & sPass)
+	oScr.writeline("cd " & sRemote)
+	oScr.writeline("put " & sLocal)
+	'oScr.writeline("dir")
+	oScr.writeline("bye")
+
+	If oScr.Line > 0 Then
+		MakeFTPScript=True
+	End If
+	oScr.Close
+
+End Function
+
+Function RunFTPScript(sScript,sServer)
+	Dim sTempLog, aResult
+
+	RunFTPScript=False
+	sCommand="ftp -s:" & sScript & " -n -v " & sServer
+
+	aResult=RunCommand(sCommand)
+	'oLog.LogInfo "=== COMMAND ==="
+	'oLog.LogInfo aResult(0)
+	oLog.LogInfo "=== STDOUT ==="
+	oLog.LogInfo Replace(aResult(1),"ftp>","")
+
+	If Instr(aResult(1),"Unknown host")>0 Then
+		oLog.LogError "Unknown host: [" & sServer & "] - check spelling"
+	End If
+
+	If Instr(aResult(1),"system cannot find")>0 Then
+		oLog.LogError "System cannot find the file specified - check folder name"
+	End If
+
+	If Len(Trim(aResult(2))) > 0 Then
+		oLog.LogError "FTP script did not finish successfully." & vbCRLF & aResult(2)
+	End If
+	If True Then
+		oLog.LogInfo  "  ["&sScript&"] - deleting script ..."
+		FSO.GetFile(sScript).Delete()
+		RunFTPScript=True
+	End If
+		
+End Function
+
+
+Function RunCommand(sCmd)
+	Dim fErr, sData, fOut, ErrF, OutF, Cmd
+
+	fOut = TempFilename()
+	fErr = TempFilename()
+	Cmd = "%COMSPEC% /c " & sCmd & " 2>" & fErr & " 1>" & fOut
+	oLog.LogInfo "  Running '"&Cmd&"' ..."
+	WSH.Run Cmd, 0, True
+	If FSO.FileExists(fOut) Then
+		If FSO.GetFile(fOut).Size>0 Then
+			Set OutF = FSO.OpenTextFile(fOut)
+			sOut = OutF.Readall
+			OutF.Close
+		End If
+		FSO.DeleteFile(fOut)
+	End If
+	If FSO.FileExists(fErr) Then
+		If FSO.GetFile(fErr).Size>0 Then
+			Set ErrF = FSO.OpenTextFile(fErr)
+			sErr = ErrF.Readall
+			ErrF.Close
+		End If
+		FSO.DeleteFile(fErr)
+	End If
+	RunCommand = Array(Cmd, sOut, sErr)
+End Function
+
+
+Function TempFilename()
+	TempFilename=FSO.GetSpecialFolder(2) & "\" & "waFTP_" & FSO.GetTempName
+End Function
+'========================================================================================
+' do not change code after this
+	Class Logger
+		Private HideWarning, HideInfo
+		Private Log2File, LogFilename
+		Private LogFSO, LogTXT
+		Private LogOpened
+
+		Private Sub Class_Initialize()
+			SetVerbose 1
+			Log2File = False
+			LogOpened = False
+		End Sub
+
+		Sub LogWarning(iText)
+			If Not HideWarning Then
+				OneLine iText
+			End If
+		End Sub
+
+		Function LogInfo(iText)
+			If Not HideInfo Then
+				OneLine iText 
+			End If
+		End Function
+
+		Function LogError(iText)
+			OneLine "***** ERROR **** " & Wscript.ScriptName & " " & getResource("Version")
+			OneLine "*** " & iText 
+			Wscript.Quit(-1)
+		End Function
+
+		Function SetLogFile(iPath)
+			If iPath="" Or Lcase(iPath)="d" Or Lcase(iPath)="m" Then
+				'output should be logged, but no filename was given: generate a name!
+				TempName=WScript.ScriptName
+				If Right(TempName,4)=".wsf" Then
+					TempName=Left(TempName,Len(TempName)-4)
+				End If
+				If Right(TempName,4)=".vbs" Then
+					TempName=Left(TempName,Len(TempName)-4)
+				End If
+				If Lcase(iPath)="d" Then
+					TempName=TempName & "." & Year(Now()) & Month(Now()) & Day(Now())
+				End If
+				If Lcase(iPath)="m" Then
+					TempName=TempName & "." & Year(Now()) & Month(Now())
+				End If
+				iPath=TempName & ".log"
+			End If 
+			If Not LogOpened Then
+				LogFilename = iPath
+				SetLogFile=True
+				Log2File = True
+			Else
+				LogError "Cannot open second log file - ["& LogFilename &"] is already open"
+			End If
+		End Function
+
+		Function SetVerbose(iNum)
+			SafeNum=CInt(iNum)
+			If SafeNum<0 Then SafeNum = 0 End If
+			If SafeNum>20 Then SafeNum = 2 End If
+			If Instr(WScript.FullName,"wscript.exe") > 0 Or Not WScript.Interactive Then
+				' running with wscript or as batch => log output to file!
+				If Not Log2File Then
+					SetLogFile WScript.ScriptName & ".log"
+				End If
+			End If
+			Select case(CInt(iNum))
+			Case 0
+				HideWarning = True
+				HideInfo = True
+				WScript.Interactive=False
+			Case 1
+				HideWarning = False
+				HideInfo = True
+			Case 2
+				HideWarning = False
+				HideInfo = False
+			End Select
+		End Function
+
+		Private Sub OneLine (iText)
+			If Not Log2File Then
+				Wscript.StdOut.WriteLine iText
+			Else
+				If Not LogOpened Then
+					wscript.echo "Opening log file [" & LogFilename & "]"
+					set LogFSO = CreateObject("Scripting.FileSystemObject")
+					set LogTXT = LogFSO.OpenTextFile(LogFilename,8,True)
+					LogTXT.WriteLine "### START " & Wscript.ScriptFullname & " as " & NTW.UserName & "@" & NTW.UserDomain & " on " & NTW.ComputerName
+					LogOpened = True
+				End If
+				LogTXT.WriteLine iText
+			End If
+		End Sub
+
+	End Class
+	'-----------------------------------------------------
+	
+	Function GetNamedStr(sName,sDefault)
+		GetNamedStr=sDefault
+		If  Not ArgsNamed.Exists(sName) Then
+			Exit Function
+		End If
+		GetNamedStr=ArgsNamed.Item(sName)
+		oLog.LogInfo "  param ["&sName&"] = ["&GetNamedStr&"] (string)"
+	End Function
+
+	Function GetNamedInt(sName,iDefault)
+		GetNamedInt=CInt(iDefault)
+		If  Not ArgsNamed.Exists(sName) Then
+			GetNamedInt=CInt(ArgsNamed.Item(sName))
+		End If
+		oLog.LogInfo "  param ["&sName&"] = ["&GetNamedInt&"] (integer)"
+	End Function
+	
+	Function GetNamedSimple(sName)
+		'GetNamedBool=bDefault
+		GetNamedSimple=ArgsNamed.Exists(sName)
+		oLog.LogInfo "  param ["&sName&"] = ["&GetNamedSimple&"] (boolean)"
+	End Function
+
+]]>
+</script>
+</job>
+</package>

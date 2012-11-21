@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<package>
+<job id="main" args="/?" prompt="no">
+<?job error="false" debug="false" ?>
+<object id="NTW" progid="WScript.Network"/>
+<object id="WSH" progid="WScript.Shell"/>
+<!-- object id="FSO" progid="Scripting.FileSystemObject"/ -->
+<resource id="Version">vX.X (Jan 2004)</resource>
+<resource id="Author">http://winadmin.sourceforge.net</resource>
+<resource id="License">
++======================================================================+
+| (c) 2004 WinAdminUtils -  http://winadmin.sourceforge.net by pforret |
+| Open Software License  -  http://opensource.org/licenses/osl-1.1.txt |
+| The Original Work is provided under this License on an "AS IS" BASIS |
+| and WITHOUT WARRANTY,  either express or implied, including, without |
+| limitation,  the warranties of NON-INFRINGEMENT,  MERCHANTABILITY or |
+| FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY |
+| OF THE ORIGINAL WORK IS WITH YOU.                                    |
++======================================================================+
+</resource>
+<resource id="History">
+* v1.4 - 2004-06-15 - /log bug, duration (H/D/W/M/Y) parsing
+* v1.3 - 2004-01-05 - Named parameter parsing
+* v1.2 - 2003-09-19 - Corrected logname bug - included program history
+* v1.1 - 2003-09-05 - Enhanced logname generation (per day/month)
+* v1.0 - 2003-09-04 - First public release
+</resource>
+<runtime>
+<description>
+<![CDATA[
+This is a base template for .wsf scripts. It is used for all waUtils scripts.
+Use it for your own scripts, change it in whatever way you like.
+]]>
+</description>
+
+<!-- ADD YOUR OWN named AND unnamed PARAMETERS HERE -->
+<unnamed name="PARAM" 
+	type="string" required="true"  helpstring="parameter (required)" />
+<named name="option1" 
+	type="string" required="true"  helpstring="server name" />
+<named name="option2" 
+	type="string" required="false"  helpstring="server port (default: 80)" />
+
+<!-- THESE ARE CLASSIC OPTIONS / PLEASE DO NOT CHANGE-->
+<named   name="v"   
+	type="simple" required="false" helpstring="verbose - show debug output during execution" />
+<named   name="q"   
+	type="simple" required="false" helpstring="quiet   - show no output during execution" />
+<named   name="log" 
+	type="string" required="false" helpstring="logfile - log output in file
+	if filename='D' use [script name].YYYYMMDD.log as log file
+	if filename='M' use [script name].YYYYMM.log as log file
+	if no filename given use [script name].log as log file" />
+<named   name="ver"   
+	type="simple" required="false" helpstring="version - show version and license information" />
+
+
+<example>
+<![CDATA[
+Examples: 
+waTemplate.wsf /option1:prod003 test1
+  :: run script on server 'prod003'
+]]>
+</example>
+
+</runtime>
+<script language="VBScript">
+<![CDATA[
+ 	Option Explicit
+   
+    ' --- initialize parameters ---
+	Dim oLog
+	Set oLog = New Logger
+
+	Dim ArgsNamed,ArgsUnnamed
+	Set ArgsNamed=WScript.Arguments.Named
+	Set ArgsUnnamed=WScript.Arguments.Unnamed
+
+	Dim ProgVersion
+	ProgVersion=Wscript.ScriptName & " " & getResource("Version") & " - " & getResource("Author")
+
+    ' --- check options ---
+	oLog.CscriptOnly '-- comment line if command can run in wscript
+	If  ArgsNamed.Exists("q") Then oLog.SetVerbose(0) End If
+	If  ArgsNamed.Exists("v") Then oLog.SetVerbose(2) End If
+	If  ArgsNamed.Exists("log") Then oLog.SetLogFile(ArgsNamed.Item("log")) End If
+
+	If  ArgsNamed.Exists("ver") Then
+		Wscript.echo "+======================================================================+"
+		Wscript.echo "    " & ProgVersion
+		Wscript.echo "+======================================================================+"
+		Wscript.echo "*** LICENSE ***" & getResource("License")
+		Wscript.echo "*** HISTORY ***" & getResource("History")
+        Wscript.Quit(0)
+    End If
+	If  ArgsUnnamed.Count < 1 Then
+		Wscript.echo "+======================================================================+"
+		Wscript.echo "    " & ProgVersion
+		Wscript.echo "+======================================================================+"
+		Wscript.echo "Type '" & Wscript.ScriptName & " /?'   for usage and examples"
+		Wscript.echo "Type '" & Wscript.ScriptName & " /ver' for version/license information"
+        Wscript.Quit(0)
+	End If
+
+	Dim Param1
+	Param1=ArgsUnnamed(0)
+
+	oLog.LogInfo "[[ " & ProgVersion & " ]] started @ " & Now()
+
+	Dim Server, Port
+	Server=GetNamedString("server","localhost")
+	Port  =GetNamedInt("port",80)
+	'MaxSize=GetNamedSize("maxsize","1MB")  KB/MB/GB
+	'MaxAge=GetNamedDuration("maxage","8h") H/D/W/M/Y
+
+    ' ---run the script ---
+
+	'TODO: insert code here
+
+	oLog.LogInfo "[[ " & ProgVersion & " ]] ended   @ " & Now()
+
+'========================================================================================
+' TODO: insert your functions, subs, classes gere
+
+'========================================================================================
+' do not change code after this
+	Class Logger
+		Private HideWarning, HideInfo
+		Private Log2File, LogFilename
+		Private LogFSO, LogTXT
+		Private LogOpened
+
+		Private Sub Class_Initialize()
+			SetVerbose 1
+			Log2File = False
+			LogOpened = False
+		End Sub
+
+		Sub LogWarning(iText)
+			If Not HideWarning Then
+				OneLine iText
+			End If
+		End Sub
+
+		Function LogInfo(iText)
+			If Not HideInfo Then
+				OneLine iText 
+			End If
+		End Function
+
+		Function LogError(iText)
+			If Not Log2File Then
+				'changed this for 'Handle invalid error' reported by Ben
+				WScript.StdErr.WriteLine  "***** ERROR **** " & Wscript.ScriptName & " " & getResource("Version") 
+				WScript.StdErr.WriteLine  "*** " & iText 
+			Else
+				OneLine "***** ERROR **** " & Wscript.ScriptName & " " & getResource("Version") 
+				OneLine "*** " & iText 
+			End If
+			Wscript.Quit(-1)
+		End Function
+
+		Function SetLogFile(iPath)
+			Dim TempName
+
+			If Len(iPath) = 0 Then
+				iPath="d"
+			End If
+			If ( Lcase(iPath)="d" Or Lcase(iPath)="m" ) Then
+				'output should be logged, but no filename was given: invent a log file!
+				TempName=WScript.ScriptName
+				If Right(TempName,4)=".wsf" Then
+					TempName=Left(TempName,Len(TempName)-4)
+				End If
+				If Right(TempName,4)=".vbs" Then
+					TempName=Left(TempName,Len(TempName)-4)
+				End If
+				If Lcase(iPath)="d" Then
+					iPath=TempName & "." & FormatUTCDate(Now(),8)
+				End If
+				If Lcase(iPath)="m" Then
+					iPath=TempName & "." & FormatUTCDate(Now(),6)
+				End If
+				iPath=iPath & ".log"
+			End If 
+			If Not LogOpened Then
+				LogFilename = iPath
+				SetLogFile=True
+				Log2File = True
+			Else
+				LogError "Cannot open second log file - ["& LogFilename &"] is already open"
+			End If
+		End Function
+
+		Function SetVerbose(iNum)
+			Dim SafeNum
+
+			SafeNum=CInt(iNum)
+			If SafeNum<0 Then SafeNum = 0 End If
+			If SafeNum>2 Then SafeNum = 2 End If
+			If Instr(WScript.FullName,"wscript.exe") > 0 Or Not WScript.Interactive Then
+				' running with wscript or as batch => log output to file!
+				If Not Log2File Then
+					SetLogFile ""
+				End If
+			End If
+			Select case(CInt(iNum))
+			Case 0
+				HideWarning = True
+				HideInfo = True
+				WScript.Interactive=False
+			Case 1
+				HideWarning = False
+				HideInfo = True
+			Case 2
+				HideWarning = False
+				HideInfo = False
+			End Select
+		End Function
+
+		Private Sub OneLine (iText)
+			If Not Log2File Then
+				'changed this for 'Handle invalid error' reported by Ben
+				'Wscript.StdOut.WriteLine iText
+				Wscript.Echo iText
+			Else
+				If Not LogOpened Then
+					wscript.echo "Opening log file [" & LogFilename & "]"
+					set LogFSO = CreateObject("Scripting.FileSystemObject")
+					set LogTXT = LogFSO.OpenTextFile(LogFilename,8,True)
+					LogTXT.WriteLine "### START " & Wscript.ScriptName & " @ " & Now() & " -- " & NTW.UserName & "@" & NTW.UserDomain & " on " & NTW.ComputerName
+					LogOpened = True
+				End If
+				LogTXT.WriteLine iText
+			End If
+		End Sub
+
+		Function CscriptOnly
+			If Instr(WScript.FullName,"wscript.exe") > 0  Then
+				wscript.echo ProgVersion & vbCRLF & _
+					"ERROR: this script does NOT run with wscript.exe!" & vbCRLF & _
+					"Use 'cscript "&Wscript.ScriptName &"' to invoke it." & vbCRLF & _
+					"Or better: run 'cscript //H:CScript' to change default script invoking to cscript."
+				Wscript.Quit(1)
+			End If
+		End Function
+
+	End Class
+
+	Function FormatUTCDate(dInput,iLength)
+		select case iLength
+		case 6
+			FormatUTCDate=Right("20" & Year(dInput),4) & Right("0" & Month(dInput),2)
+		case 8
+			FormatUTCDate=Right("20" & Year(dInput),4) & Right("0" & Month(dInput),2) & Right("0" & Day(dInput),2)
+		case else
+			FormatUTCDate=Right("20" & Year(dInput),4) & Right("0" & Month(dInput),2) & Right("0" & Day(dInput),2)
+		end select
+	End Function
+
+	Function Basename(sPath)
+		'delete everything before last "\"
+		If FSO.FileExists(sPath) Then
+			Basename=FSO.GetFile(sPath).Name
+		ElseIf InStrRev(sPath,"\") > 0 Then
+			Basename=Mid(sPath,InStrRev(sPath,"\")+1)
+		Else
+			Basename=sPath
+		End If
+	End Function
+
+	Function Foldername(sPath)
+		'delete everything after last "\"
+		If FSO.FileExists(sPath) Then
+			Foldername=FSO.GetFile(sPath).ParentFolder.Path
+		ElseIf InStrRev(sPath,"\") > 0 Then
+			Foldername=Left(sPath,InStrRev(sPath,"\")-1)
+		Else
+			Foldername=""
+		End If
+	End Function
+	'-----------------------------------------------------
+	' GET COMMANDLINE PARAMETERS
+	'-----------------------------------------------------
+
+	Function GetNamedString(sName,sDefault)
+		GetNamedString=sDefault
+		If  ArgsNamed.Exists(sName) Then
+			GetNamedString=ArgsNamed.Item(sName)
+		End If
+		oLog.LogInfo "  param ["&sName&"] = ["&GetNamedString&"] (string)"
+	End Function
+
+	Function GetNamedInt(sName,iDefault)
+		GetNamedInt=CInt(iDefault)
+		If  ArgsNamed.Exists(sName) Then
+			GetNamedInt=CInt(ArgsNamed.Item(sName))
+		End If
+		oLog.LogInfo "  param ["&sName&"] = ["&GetNamedInt&"] (integer)"
+	End Function
+	
+	Function GetNamedSize(sName,sDefault)
+		Dim sSize, dMultiplier
+
+		dMultiplier=1
+		sSize=Ucase(sDefault)
+		If  ArgsNamed.Exists(sName) Then
+			sSize=Ucase(ArgsNamed.Item(sName))
+		End If
+		If     Instr(sSize,"KB") > 0 Then
+			dMultiplier=1024
+			sSize=Replace(sSize,"KB","")
+		Elseif Instr(sSize,"K") > 0 Then
+			dMultiplier=1024
+			sSize=Replace(sSize,"K","")
+		Elseif Instr(sSize,"MB") > 0 Then
+			dMultiplier=1024*1024
+			sSize=Replace(sSize,"MB","")
+		Elseif Instr(sSize,"M") > 0 Then
+			dMultiplier=1024*1024
+			sSize=Replace(sSize,"M","")
+		Elseif Instr(sSize,"GB") > 0 Then
+			dMultiplier=1024*1024*1024
+			sSize=Replace(sSize,"GB","")
+		Elseif Instr(sSize,"G") > 0 Then
+			dMultiplier=1024*1024*1024
+			sSize=Replace(sSize,"G","")
+		End If
+		'TO DO: make this robust
+		GetNamedSize=CDbl(sSize)*dMultiplier
+		oLog.LogInfo "  param ["&sName&"] = ["&GetNamedSize&"] (bytes)"
+	End Function
+	
+	Function GetNamedDuration(sName,sDefault)
+		Dim sSize, dMultiplier
+
+		'always calculate back to hours!
+		dMultiplier=24
+		sSize=Ucase(sDefault)
+		If  ArgsNamed.Exists(sName) Then
+			sSize=Ucase(ArgsNamed.Item(sName))
+			If Len(sSize) = 0 Then
+				sSize=Ucase(sDefault)
+			End If
+		End If
+		If     Instr(sSize,"H") > 0 Then
+			dMultiplier=1
+			sSize=Replace(sSize,"H","")
+		Elseif Instr(sSize,"D") > 0 Then
+			dMultiplier=24
+			sSize=Replace(sSize,"D","")
+		Elseif Instr(sSize,"W") > 0 Then
+			dMultiplier=24*7
+			sSize=Replace(sSize,"W","")
+		Elseif Instr(sSize,"M") > 0 Then
+			dMultiplier=24*30
+			sSize=Replace(sSize,"M","")
+		Elseif Instr(sSize,"Y") > 0 Then
+			dMultiplier=24*365
+			sSize=Replace(sSize,"Y","")
+		End If
+		'TO DO: make this robust
+		On Error Resume Next
+		GetNamedDuration=CDbl(sSize)*dMultiplier
+		If Err.Number <> 0 Then 
+			OLog.LogError "Illegal duration parameter [/" & sName & "] : ["&sSize&"]"
+		End If
+		On Error Goto 0
+		'oLog.LogInfo "  param ["&sName&"] = ["&GetNamedSize&"] (bytes)"
+	End Function
+
+	Function GetNamedSimple(sName)
+		GetNamedSimple=ArgsNamed.Exists(sName)
+		oLog.LogInfo "  param ["&sName&"] = ["&GetNamedSimple&"] (boolean)"
+	End Function
+]]>
+</script>
+</job>
+</package>
