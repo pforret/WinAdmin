@@ -5,33 +5,33 @@
 <object id="NTW" progid="WScript.Network"/>
 <object id="WSH" progid="WScript.Shell"/>
 <!-- object id="FSO" progid="Scripting.FileSystemObject"/ -->
-<resource id="Version">vX.X (Jan 2004)</resource>
-<resource id="Author">http://winadmin.sourceforge.net</resource>
+<resource id="Version">vX.X (MMM YYYY)</resource>
+<resource id="Author">Peter Forret</resource>
+<resource id="Website">https://github.com/pforret/WinAdmin</resource>
 <resource id="License">
 +======================================================================+
-| (c) 2004 WinAdminUtils -  http://winadmin.sourceforge.net by pforret |
+| (c) 2003-2018 WinAdminUtils  -  https://github.com/pforret/WinAdmin  |
 | Open Software License  -  http://opensource.org/licenses/osl-1.1.txt |
 | The Original Work is provided under this License on an "AS IS" BASIS |
 | and WITHOUT WARRANTY,  either express or implied, including, without |
 | limitation,  the warranties of NON-INFRINGEMENT,  MERCHANTABILITY or |
 | FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY |
 | OF THE ORIGINAL WORK IS WITH YOU.                                    |
-+======================================================================+
-</resource>
++======================================================================+</resource>
 <resource id="History">
+* v1.41- 2018-11-12 - updated for 2018
 * v1.4 - 2004-06-15 - /log bug, duration (H/D/W/M/Y) parsing
 * v1.3 - 2004-01-05 - Named parameter parsing
 * v1.2 - 2003-09-19 - Corrected logname bug - included program history
 * v1.1 - 2003-09-05 - Enhanced logname generation (per day/month)
-* v1.0 - 2003-09-04 - First public release
-</resource>
+* v1.0 - 2003-09-04 - First public release</resource>
 <runtime>
-<description>
-<![CDATA[
+<description><![CDATA[
+### [[waTemplate.wsf]] vX.X (MMM YYYY)
+### Peter Forret - https://github.com/pforret/WinAdmin
 This is a base template for .wsf scripts. It is used for all waUtils scripts.
 Use it for your own scripts, change it in whatever way you like.
-]]>
-</description>
+]]></description>
 
 <!-- ADD YOUR OWN named AND unnamed PARAMETERS HERE -->
 <unnamed name="PARAM" 
@@ -77,7 +77,8 @@ waTemplate.wsf /option1:prod003 test1
 	Set ArgsUnnamed=WScript.Arguments.Unnamed
 
 	Dim ProgVersion
-	ProgVersion=Wscript.ScriptName & " " & getResource("Version") & " - " & getResource("Author")
+	ProgVersion="### [[" & Wscript.ScriptName & "]] " & getResource("Version") & vbCRLF & _
+				"### " & getResource("Author") & " - " & getResource("Website")
 
     ' --- check options ---
 	oLog.CscriptOnly '-- comment line if command can run in wscript
@@ -86,17 +87,13 @@ waTemplate.wsf /option1:prod003 test1
 	If  ArgsNamed.Exists("log") Then oLog.SetLogFile(ArgsNamed.Item("log")) End If
 
 	If  ArgsNamed.Exists("ver") Then
-		Wscript.echo "+======================================================================+"
-		Wscript.echo "    " & ProgVersion
-		Wscript.echo "+======================================================================+"
-		Wscript.echo "*** LICENSE ***" & getResource("License")
-		Wscript.echo "*** HISTORY ***" & getResource("History")
+		Wscript.echo ProgVersion
+		Wscript.echo "### LICENSE ###" & getResource("License")
+		Wscript.echo "### HISTORY ###" & getResource("History")
         Wscript.Quit(0)
     End If
 	If  ArgsUnnamed.Count < 1 Then
-		Wscript.echo "+======================================================================+"
-		Wscript.echo "    " & ProgVersion
-		Wscript.echo "+======================================================================+"
+		Wscript.echo ProgVersion
 		Wscript.echo "Type '" & Wscript.ScriptName & " /?'   for usage and examples"
 		Wscript.echo "Type '" & Wscript.ScriptName & " /ver' for version/license information"
         Wscript.Quit(0)

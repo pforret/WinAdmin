@@ -17,8 +17,7 @@
 | limitation,  the warranties of NON-INFRINGEMENT,  MERCHANTABILITY or |
 | FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY |
 | OF THE ORIGINAL WORK IS WITH YOU.                                    |
-+======================================================================+
-</resource>
++======================================================================+</resource>
 <resource id="History">
 :: v1.71- 2018-11-12 - default max size is now 4GB
 :: v1.7 - 2005-11-21 - fix paths with spaces, add $WEEKDAY
@@ -29,11 +28,9 @@
 :: v1.2 - 2004-01-15 - added 'move' functionality
 :: v1.1b- 2003-11-18 - fixed /log:d bug - .zip.zip bug
 :: v1.1 - 2003-10-31 - added rotation/stats - fixed some bugs (e.g. /df)
-:: v1.0 - 2003-09-01 - First public release
-</resource>
+:: v1.0 - 2003-09-01 - First public release</resource>
 <runtime>
-<description>
-<![CDATA[### [[waRmZip.wsf]] v1.71 (Nov 2018)
+<description><![CDATA[### [[waRmZip.wsf]] v1.71 (Nov 2018)
 ### Peter Forret - https://github.com/pforret/WinAdmin
 Utility to clean up/free up space in a folder (and its subfolders),
 * compressing files after a certain number of days (with external program)
@@ -41,8 +38,7 @@ Utility to clean up/free up space in a folder (and its subfolders),
 * deleting files and/or empty folders after a certain period of time
 * moving files to other folders/disks
 _____________________________________________________________________________
-]]>
-</description>
+]]></description>
 <unnamed name="BASE" required="true" many="false" 
 	helpstring="base folder where cleanup starts
 "/>
@@ -121,7 +117,7 @@ waRmZip.wsf "d:\server\log" /ra:7 /fo:.txt /gt:1MB /log:d
 :: rotate all .txt files greater than 1MB created more than 7 days ago
 
 waRmZip.wsf /r /f:.log "C:\WINNT\system32\Logfiles" /ma:7 /md:f:\backup\$YEAR\$COMP\$DAY\IIS
-:: move all log files older than 7 days to folder F:\backup\2004\server1\20040101\IIS
+:: move all log files older than 7 days to folder F:\backup\2018\dc03\20181112\IIS
 
 waRmZip.wsf /r /f:.log "C:\WINNT\system32\Logfiles" /ca:14 /cp:"c:\Program Files\7-Zip\7za.exe" /cpp:"a -tzip $out $in"
 :: compress all log files older than 14 days with 7-Zip
@@ -199,7 +195,7 @@ waRmZip.wsf /r /f:.log "C:\WINNT\system32\Logfiles" /ca:14 /cp:"c:\Program Files
 	If Not Left(sCmpExtension,1) = "." Then
 		sCmpExtension="." & sCmpExtension
 	End If
-	sCmpCommand=GetNamedString("cp","wzzip.exe")
+	sCmpCommand=GetNamedString("cp","zip.exe")
 	sCmpCommandParam=GetNamedString("cpp","$folder\$out $folder\$in")
 
 	'=== DELETE PARAMETERS
