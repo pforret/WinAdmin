@@ -1,4 +1,6 @@
-_____   waRmZip.wsf v1.7 (Nov 2005) - http://winadmin.sourceforge.net   _____
+
+### [[waRmZip.wsf]] v1.71 (Nov 2018)
+### Peter Forret - https://github.com/pforret/WinAdmin
 Utility to clean up/free up space in a folder (and its subfolders),
 * compressing files after a certain number of days (with external program)
 * rotating files after a certain number of days/above a certain size
@@ -37,7 +39,7 @@ rp   : rotation prefix - D:YYYYMMDD                    (default: D)
 fo   : filter only - only process files with extension (default: process all files)
 fn   : filter not  - don't process files with extension(default: process all files)
 gt   : greater than- only process when larger than     (default: 0 KB)
-lt   : lesser than - only process when smaller than    (default: 1 GB)
+lt   : lesser than - only process when smaller than    (default: 4GB)
 r    : recursive   - also process subfolders           (default: don't process subfolders)
 nh   : no hidden   - do not process hidden files/folders(default: just process them)
 t    : test mode   - don't actually process files - just show what would be done
@@ -69,27 +71,4 @@ waRmZip.wsf /r /f:.log "C:\WINNT\system32\Logfiles" /ma:7 /md:f:\backup\$YEAR\$C
 waRmZip.wsf /r /f:.log "C:\WINNT\system32\Logfiles" /ca:14 /cp:"c:\Program Files\7-Zip\7za.exe" /cpp:"a -tzip $out $in"
 :: compress all log files older than 14 days with 7-Zip
 
-
-_____   waRmZip.wsf v1.7 (Nov 2005) - http://winadmin.sourceforge.net   _____
-===== LICENSE =====
-+======================================================================+
-| (c) 2004 WinAdminUtils -  http://winadmin.sourceforge.net by pforret |
-| Open Software License  -  http://opensource.org/licenses/osl-1.1.txt |
-| The Original Work is provided under this License on an "AS IS" BASIS |
-| and WITHOUT WARRANTY,  either express or implied, including, without |
-| limitation,  the warranties of NON-INFRINGEMENT,  MERCHANTABILITY or |
-| FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY |
-| OF THE ORIGINAL WORK IS WITH YOU.                                    |
-+======================================================================+
-
-===== HISTORY =====
-:: v1.7 - 2005-11-21 - fix paths with spaces, add $WEEKDAY
-:: v1.6 - 2004-07-12 - fix move/copy bug for folder trees
-:: v1.5 - 2004-06-15 - fixed filter bug, better rotate feedback
-:: v1.4 - 2004-03-10 - adapted for waCron.cmd, added /nh, max age in h/d/w/m
-:: v1.3 - 2004-02-24 - worked on the /log functionality
-:: v1.2 - 2004-01-15 - added 'move' functionality
-:: v1.1b- 2003-11-18 - fixed /log:d bug - .zip.zip bug
-:: v1.1 - 2003-10-31 - added rotation/stats - fixed some bugs (e.g. /df)
-:: v1.0 - 2003-09-01 - First public release
 
