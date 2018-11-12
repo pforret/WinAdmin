@@ -1,8 +1,8 @@
 @echo off
 setlocal
 set PROG_NAME=%0
-set PROG_VERS=v1.0
-set PROG_AUTH=pforret@users.sourceforge.net
+set PROG_VERS=v1.1
+set PROG_AUTH=peter@forret.com
 
 :: ===== BASIC TESTS
 if "%1" == ""     goto usage
@@ -28,8 +28,9 @@ endlocal
 goto :end
 :: ########## START OF GENERIC PROCEDURES ##########
 :usage
-	echo _____  %PROG_NAME% %PROG_VERS% - by %PROG_AUTH%  _____
+	echo === %PROG_NAME% %PROG_VERS% - by %PROG_AUTH%
 	echo.
+	echo Will execute a program and show waTimer statistics afterwards
 	echo Usage: %PROG_NAME% [/ver] [/I] COMMAND [PARAM1] [PARAM2] ...
 	echo.
 	echo Options :
@@ -43,9 +44,9 @@ goto :end
 goto :end
 
 :license
-	echo "_____   %PROG_NAME% %PROG_VERS% - by %PROG_AUTH%   _____"
-	echo +======================================================================+
-	echo + (c) 2003 WinAdminUtils -  http://winadmin.sourceforge.net by pforret +
+	echo === %PROG_NAME% %PROG_VERS% - by %PROG_AUTH%
+	echo ======================================================================+
+	echo + (c) 2003-2018 WinAdminUtils  -  https://github.com/pforret/WinAdmin  +
 	echo + Open Software License  -  http://opensource.org/licenses/osl-1.1.txt +
 	echo + The Original Work is provided under this License on an 'AS IS' BASIS +
 	echo + and WITHOUT WARRANTY,  either express or implied, including, without +

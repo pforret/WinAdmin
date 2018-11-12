@@ -1,7 +1,7 @@
-_____   waTimer.wsf v1.2 (Sep 2004) - http://winadmin.sourceforge.net   _____
-Script to time execution of programs/scripts and
-calculate throughput statistics afterwards.
 
+### [[waTimer.wsf]] v1.21 (Nov 2018)
+### Peter Forret - https://github.com/pforret/WinAdmin
+Script to time execution of programs/scripts and calculate throughput statistics afterwards.
 Usage: waTimer.wsf cmd par [/total:value] [/bar:value] [/calc:value] [/unit:value] [/scale:value] [/isize:value] [/osize:value] [/text] [/ver] [/v] [/q] [/log:value]
 
 Options:
@@ -57,19 +57,3 @@ waTimer PROGRESS 100 /total:150
 waTimer PROGRESS 150 /total:150
 waTimer STOP  mytest /calc:150  /unit:copy/hr
 
-_____   waTimer.wsf v1.2 (Sep 2004) - http://winadmin.sourceforge.net   _____
-===== LICENSE =====
-+======================================================================+
-| (c) 2004 WinAdminUtils -  http://winadmin.sourceforge.net by pforret |
-| Open Software License  -  http://opensource.org/licenses/osl-1.1.txt |
-| The Original Work is provided under this License on an "AS IS" BASIS |
-| and WITHOUT WARRANTY,  either express or implied, including, without |
-| limitation,  the warranties of NON-INFRINGEMENT,  MERCHANTABILITY or |
-| FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY |
-| OF THE ORIGINAL WORK IS WITH YOU.                                    |
-+======================================================================+
-
-===== HISTORY =====
-:: v1.2 - 2004-09-14 - added isize/osize options
-:: v1.1 - 2003-09-19 - Upgraded to waTemplate 1.2
-:: v1.0 - 2003-09-01 - First public release

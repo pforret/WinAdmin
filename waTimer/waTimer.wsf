@@ -4,24 +4,24 @@
 <object id="NTW" progid="WScript.Network"/>
 <object id="WSH" progid="WScript.Shell"/>
 <object id="FSO" progid="Scripting.FileSystemObject"/>
-<resource id="Version">v1.2 (Sep 2004)</resource>
-<resource id="Author">http://winadmin.sourceforge.net</resource>
+<resource id="Version">v1.21 (Nov 2018)</resource>
+<resource id="Author">Peter Forret</resource>
+<resource id="Website">https://github.com/pforret/WinAdmin</resource>
 <resource id="License">
 +======================================================================+
-| (c) 2004 WinAdminUtils -  http://winadmin.sourceforge.net by pforret |
+| (c) 2003-2018 WinAdminUtils  -  https://github.com/pforret/WinAdmin  |
 | Open Software License  -  http://opensource.org/licenses/osl-1.1.txt |
 | The Original Work is provided under this License on an "AS IS" BASIS |
 | and WITHOUT WARRANTY,  either express or implied, including, without |
 | limitation,  the warranties of NON-INFRINGEMENT,  MERCHANTABILITY or |
 | FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY |
 | OF THE ORIGINAL WORK IS WITH YOU.                                    |
-+======================================================================+
-</resource>
++======================================================================+</resource>
 <resource id="History">
+:: v1.21- 2018-11-12 - updated for 2018
 :: v1.2 - 2004-09-14 - added isize/osize options
 :: v1.1 - 2003-09-19 - Upgraded to waTemplate 1.2
-:: v1.0 - 2003-09-01 - First public release
-</resource>
+:: v1.0 - 2003-09-01 - First public release</resource>
 <resource id="Tests">
 waTimer PROGRESS 88 /total:150
 :: should give: 
@@ -46,14 +46,12 @@ waTimer PROGRESS 50 /total:150
 waTimer PROGRESS 100 /total:150
 :: ...
 waTimer PROGRESS 150 /total:150
-waTimer STOP  mytest /calc:150  /unit:copy/hr
-</resource>
+waTimer STOP  mytest /calc:150  /unit:copy/hr</resource>
 <runtime>
 <description>
-_____   waTimer.wsf v1.2 (Sep 2004) - http://winadmin.sourceforge.net   _____
-Script to time execution of programs/scripts and
-calculate throughput statistics afterwards.
-</description>
+### [[waTimer.wsf]] v1.21 (Nov 2018)
+### Peter Forret - https://github.com/pforret/WinAdmin
+Script to time execution of programs/scripts and calculate throughput statistics afterwards.</description>
 
 <unnamed type="string" required="true"  name="cmd"      helpstring="command - WAIT/START/PROGRESS/STOP" />
 <unnamed type="string" required="true" 	name="par"      helpstring="parameter - (WAIT) # seconds to wait - (START/STOP) timer ID"/>
@@ -129,7 +127,8 @@ waTimer STOP  mytest /calc:150  /unit:copy/hr
 
 	Set ArgsNamed=WScript.Arguments.Named
 	Set ArgsUnnamed=WScript.Arguments.Unnamed
-	ProgVersion="_____   " & Wscript.ScriptName & " " & getResource("Version") & " - " & getResource("Author") & "   _____"
+	ProgVersion="### [[" & Wscript.ScriptName & "]] " & getResource("Version") & vbCRLF & _
+				"### " & getResource("Author") & " - " & getResource("Website")
 
     ' --- check options ---
 	If  ArgsNamed.Exists("q")   Then oLog.SetVerbose(0) End If
