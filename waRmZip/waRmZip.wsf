@@ -5,11 +5,12 @@
 <object id="NTW" progid="WScript.Network"/>
 <object id="WSH" progid="WScript.Shell"/>
 <object id="FSO" progid="Scripting.FileSystemObject"/>
-<resource id="Version">v1.7 (Nov 2005)</resource>
-<resource id="Author">http://winadmin.sourceforge.net</resource>
+<resource id="Version">v1.71 (Nov 2018)</resource>
+<resource id="Author">Peter Forret</resource>
+<resource id="Website">https://github.com/pforret/WinAdmin</resource>
 <resource id="License">
 +======================================================================+
-| (c) 2004 WinAdminUtils -  http://winadmin.sourceforge.net by pforret |
+| (c) 2003-2018 WinAdminUtils   -  https://github.com/pforret/WinAdmin |
 | Open Software License  -  http://opensource.org/licenses/osl-1.1.txt |
 | The Original Work is provided under this License on an "AS IS" BASIS |
 | and WITHOUT WARRANTY,  either express or implied, including, without |
@@ -19,6 +20,7 @@
 +======================================================================+
 </resource>
 <resource id="History">
+:: v1.71- 2018-11-12 - default max size is now 4GB
 :: v1.7 - 2005-11-21 - fix paths with spaces, add $WEEKDAY
 :: v1.6 - 2004-07-12 - fix move/copy bug for folder trees
 :: v1.5 - 2004-06-15 - fixed filter bug, better rotate feedback
@@ -31,8 +33,8 @@
 </resource>
 <runtime>
 <description>
-<![CDATA[
-_____   waRmZip.wsf v1.7 (Nov 2005) - http://winadmin.sourceforge.net   _____
+<![CDATA[### [[waRmZip.wsf]] v1.71 (Nov 2018)
+### Peter Forret - https://github.com/pforret/WinAdmin
 Utility to clean up/free up space in a folder (and its subfolders),
 * compressing files after a certain number of days (with external program)
 * rotating files after a certain number of days/above a certain size
@@ -86,7 +88,7 @@ _____________________________________________________________________________
 <named name="gt" required="false" type="string" 
 	helpstring="greater than- only process when larger than     (default: 0 KB)"/>
 <named name="lt" required="false" type="string" 
-	helpstring="lesser than - only process when smaller than    (default: 1 GB)"/>
+	helpstring="lesser than - only process when smaller than    (default: 4GB)"/>
 <named name="r"  required="false" type="simple" 
 	helpstring="recursive   - also process subfolders           (default: don't process subfolders)"/>
 <named name="nh"  required="false" type="simple" 
@@ -139,11 +141,13 @@ waRmZip.wsf /r /f:.log "C:\WINNT\system32\Logfiles" /ca:14 /cp:"c:\Program Files
 	Set ArgsNamed=WScript.Arguments.Named
 	Set ArgsUnnamed=WScript.Arguments.Unnamed
 
-	ProgVersion="_____   " & Wscript.ScriptName & " " & getResource("Version") & " - " & getResource("Author") & "   _____"
+	ProgVersion="### [[" & Wscript.ScriptName & "]] " & getResource("Version") & vbCRLF & _
+				"### " & getResource("Author") & " - " & getResource("Website")
 
     ' --- check options ---
 	oLog.CscriptOnly '-- comment line if command can run in wscript
-	If Instr(WScript.FullName,"wscript.exe") > 0  Then
+	If Not LCase( Right( WScript.FullName, 12 ) ) = "\cscript.exe"  Then
+		Wscript.echo WScript.FullName
 		wscript.echo ProgVersion & vbCRLF & _
 			"ERROR: this script does NOT run with wscript.exe!" & vbCRLF & _
 			"Use 'cscript "&Wscript.ScriptName &"' to invoke it." & vbCRLF & _
@@ -242,7 +246,7 @@ waRmZip.wsf /r /f:.log "C:\WINNT\system32\Logfiles" /ca:14 /cp:"c:\Program Files
 	sFilterOnly=GetNamedString("fo",sFilterOnly)
 	sFilterNot =GetNamedString("fn","")
 	iFilterGT=GetNamedSize("gt","0")
-	iFilterLT=GetNamedSize("lt","1GB")
+	iFilterLT=GetNamedSize("lt","4GB")
 	bNoHidden=GetNamedSimple("nh")
 
 	RootFolder=ArgsUnnamed(0)
